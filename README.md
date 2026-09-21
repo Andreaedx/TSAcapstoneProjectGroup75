@@ -1,2 +1,2 @@
-# TSAcapstoneProjectGroup75_apartmentManagementSystem
+# TSAcapstoneProjectGroup75
 Backend API for the Apartment Management System
