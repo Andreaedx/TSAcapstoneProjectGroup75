@@ -3,13 +3,15 @@ require("dotenv").config();
 const express = require("express");
 
 //routes should be here
-
+const authRoutes = require("./Routes/authRoutes");
+const userRoutes = require("./Routes/userRoutes");
 
 const app = express();
 
 app.use(express.json());
 
-
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
 const connectDB = require("./Config/db");
 
