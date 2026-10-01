@@ -5,6 +5,10 @@ const express = require("express");
 const connectDB = require("./Config/db");
 
 const authRoutes = require("./Routes/authRoutes");
+const invoiceRoutes = require("./Routes/invoiceRoutes");
+const errorHandler = require("./Middleware/errorHandler");
+
+//routes should be here
 
 const apartmentRoutes = require("./Routes/apartmentRoutes");
 
@@ -16,6 +20,9 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 
 app.use("/api/apartments", apartmentRoutes);
+app.use("/api/invoices", invoiceRoutes);
+
+app.use(errorHandler);
 
 app.get("/", (req, res) => {
     res.status(200).json({
