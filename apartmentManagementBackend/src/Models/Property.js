@@ -7,24 +7,29 @@ const propertySchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+
         address: {
             type: String,
             required: true,
         },
+
         city: {
             type: String,
             required: true,
         },
+
         description: {
             type: String,
             default: ""
-        },    
+        },
+
         manager: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
         },
     },
+
     { timestamps: true }
 );
 
