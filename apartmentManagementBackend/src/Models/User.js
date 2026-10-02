@@ -22,13 +22,22 @@ const userSchema = new mongoose.Schema(
         role: {
             type: String,
             required: true,
-            enum: ["Manager", "Tenant", "admin"],
-            default: "Tenant"
+            enum: ["admin", "manager", "tenant"],
+            default: "tenant"
         },
         refreshToken: {
             type: String,
             default: null,
+        },
+        resetPasswordToken: {
+            type: String,
+            default: null
+        },
+        resetPasswordExpires: {
+            type: Date,
+            default: null
         }
+
     },
     { timestamps: true }
 );
