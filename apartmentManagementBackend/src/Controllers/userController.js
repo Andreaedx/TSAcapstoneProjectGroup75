@@ -2,7 +2,7 @@ const User = require("../Models/User");
 const bcrypt = require("bcryptjs");
 
 
-exports.getProfile = async (req, res) => {
+exports.getProfile = async (req, res, next) => {
     try {
         const user = await User.findById( req.user.id ).select("-password -refreshToken");
 
@@ -18,14 +18,11 @@ exports.getProfile = async (req, res) => {
             user
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Server error"
-        });
+        next(error);
     }
 };
 
-exports.updateProfile = async (req, res) => {
+exports.updateProfile = async (req, res, next) => {
     try {
         const { name, email } = req.body;
 
@@ -64,16 +61,11 @@ exports.updateProfile = async (req, res) => {
             user
         });
     } catch (error) {
-        console.error(error);
-
-        res.status(500).json({
-            success: false,
-            message: "Profile update failed"
-        }); 
+        next(error);
     }
 };
 
-exports.changePassword = async (req, res) => {
+exports.changePassword = async (req, res, next) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
@@ -109,14 +101,11 @@ exports.changePassword = async (req, res) => {
             message: "Password changed successfully"
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "An error occurred"
-        });
+        next(error);
     }
 };
 
-exports.delete = async (req, res) => {
+exports.delete = async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id);
 
@@ -134,10 +123,7 @@ exports.delete = async (req, res) => {
             message: "Account deleted successfully"
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "An error occurred"
-        });
+        next(error);
     }
 };
 
@@ -151,15 +137,22 @@ exports.getUsers = async (req, res) => {
             users
         });
     } catch (error){
-        res.status(500).json({
-            success: false,
-            message: "Failed to retrieve users"
-        });
+        next(error);
     }
 };
 
-exports.getUserById = async (req, res) => {
+exports.getUserById = async (req, res, next) => {
     try {
+        const isAdmin = req.user.role === "admin";
+        const isOwner = req.user.id.toString() === req.params.id;
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied"
+            });
+        }
+
         const user = await User.findById(req.params.id).select("-password -refreshToken");
 
         if(!user){
@@ -169,23 +162,12 @@ exports.getUserById = async (req, res) => {
             });
         }
 
-        const allowed = req.user.role === "admin"  || req.user.id.toString() === user.id;
-        if(!allowed){
-            return res.status(403).json({
-                success: false,
-                message: "Failed to retrieve user"
-            });
-        }
-
         res.status(200).json({
             success: true,
             user
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Failed to retrieve user"
-        });
+        next(error);
     }
 };
 

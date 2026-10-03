@@ -25,6 +25,18 @@ const userSchema = new mongoose.Schema(
             enum: ["admin", "manager", "tenant"],
             default: "tenant"
         },
+        isEmailVerified: {
+            type: Boolean,
+            default: false
+        },
+        emailVerificationToken: {
+            type: String,
+            select: false
+        },
+        emailVerificationExpires: {
+            type: Date,
+            select: false
+        },
         refreshToken: {
             type: String,
             default: null,
@@ -37,7 +49,6 @@ const userSchema = new mongoose.Schema(
             type: Date,
             default: null
         }
-
     },
     { timestamps: true }
 );
