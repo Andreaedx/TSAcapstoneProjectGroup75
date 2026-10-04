@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cookieParser = require("cookie-parser");
 
+const propertyRoutes = require("./Routes/propertyRoutes");
 const authRoutes = require("./Routes/authRoutes");
 const userRoutes = require("./Routes/userRoutes");
 const invoiceRoutes = require("./Routes/invoiceRoutes");
@@ -19,6 +20,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/invoices", invoiceRoutes);
+app.use("/properties", propertyRoutes);
 
 // Error handler MUST come after all routes
 app.use(errorHandler);
