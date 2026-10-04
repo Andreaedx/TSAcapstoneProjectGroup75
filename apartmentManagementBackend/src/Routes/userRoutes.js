@@ -7,10 +7,10 @@ const { protect } = require("../Middleware/authMiddleware");
 const { authorized } = require("../Middleware/roleMiddleware");
 
 
-router.get("/profile", protect, authorized("tenant"), userController.getProfile);
-router.patch("/profile", protect, authorized("tenant"), userController.updateProfile);
-router.patch("/password", protect, authorized("tenant"), userController.changePassword);
-router.delete("/delete", protect, authorized("tenant"), userController.delete);
+router.get("/profile", protect, authorized("tenant", "manager"), userController.getProfile);
+router.patch("/profile", protect, authorized("tenant", "manager"), userController.updateProfile);
+router.patch("/password", protect, authorized("tenant", "manager"), userController.changePassword);
+router.delete("/delete", protect, authorized("tenant", "manager"), userController.delete);
 
 router.get("/", protect, authorized("admin"), userController.getUsers);
 router.get("/:id", protect, authorized("admin"), userController.getUserById);
