@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post("/", authorized("Manager"), createInvoice);
+router.post("/", authorized("manager"), createInvoice);
 router.get("/", getInvoices);
 router.get("/:id", getInvoiceById);
 
