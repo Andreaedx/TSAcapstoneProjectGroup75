@@ -8,6 +8,8 @@ const propertyRoutes = require("./Routes/propertyRoutes");
 const authRoutes = require("./Routes/authRoutes");
 const userRoutes = require("./Routes/userRoutes");
 const invoiceRoutes = require("./Routes/invoiceRoutes");
+const apartmentRoutes = require("./Routes/apartmentRoutes");
+const maintenanceRoutes = require("./Routes/maintenanceRoutes");
 
 const errorHandler = require("./Middleware/errorHandler");
 
@@ -21,7 +23,6 @@ app.use(
     credentials: true,
   })
 );
-
 app.use(express.json());
 app.use(cookieParser());
 
@@ -29,6 +30,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/properties", propertyRoutes);
+app.use("/api/apartments", apartmentRoutes);
+app.use("/api/maintenaces", maintenanceRoutes);
+
 
 // Error handler MUST come after all routes
 app.use(errorHandler);
