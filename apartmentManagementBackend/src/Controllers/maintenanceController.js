@@ -84,9 +84,9 @@ const getMaintenanceRequests = async (req, res, next) => {
     try {
         const filter = {};
 
-        if (req.user.role === "Tenant") {
+        if (req.user.role === "tenant") {
             filter.tenant = req.user._id;
-        } else if (req.user.role === "Manager") {
+        } else if (req.user.role === "manager") {
             const apartmentIds = await getManagerApartmentIds(req.user._id);
             filter.apartment = { $in: apartmentIds };
         }
@@ -128,11 +128,11 @@ const getMaintenanceRequestById = async (req, res, next) => {
             throw ApiError.notFound("Maintenance request not found");
         }
 
-        if (req.user.role === "Tenant" && !request.tenant.equals(req.user._id)) {
+        if (req.user.role === "tenant" && !request.tenant.equals(req.user._id)) {
             throw ApiError.forbidden("You can only view your own requests");
         }
 
-        if (req.user.role === "Manager") {
+        if (req.user.role === "manager") {
             const apartmentIds = await getManagerApartmentIds(req.user._id);
             if (!apartmentIds.includes(request.apartment._id.toString())) {
                 throw ApiError.forbidden("You can only view requests for your own properties");
@@ -157,13 +157,13 @@ const updateMaintenanceRequest = async (req, res, next) => {
 
         const isOwner = request.tenant.equals(req.user._id);
 
-        if (req.user.role === "Tenant" && !isOwner) {
+        if (req.user.role === "tenant" && !isOwner) {
             throw ApiError.forbidden("You can only update your own requests");
         }
-        if (req.user.role === "Tenant" && request.status !== "OPEN") {
+        if (req.user.role === "tenant" && request.status !== "OPEN") {
             throw ApiError.badRequest("A request that is no longer OPEN can no longer be edited");
         }
-        if (req.user.role === "Manager") {
+        if (req.user.role === "manager") {
             const apartmentIds = await getManagerApartmentIds(req.user._id);
             if (!apartmentIds.includes(request.apartment.toString())) {
                 throw ApiError.forbidden("You can only update requests for your own properties");
