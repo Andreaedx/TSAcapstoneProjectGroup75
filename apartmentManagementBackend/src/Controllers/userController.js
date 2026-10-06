@@ -2,9 +2,9 @@ const User = require("../Models/User");
 const bcrypt = require("bcryptjs");
 
 
-exports.getProfile = async (req, res, next) => {
+exports.getProfile = async (req, res) => {
     try {
-        const user = await User.findById( req.user.id ).select("-password -refreshToken");
+        const user = await User.findById( req.user.id ).select("-password");
 
         if(!user){
             return res.status(404).json({
@@ -16,17 +16,20 @@ exports.getProfile = async (req, res, next) => {
         res.status(200).json({
             success: true,
             user
-        });
+        })
     } catch (error) {
-        next(error);
+        res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
     }
 };
 
-exports.updateProfile = async (req, res, next) => {
+exports.updateProfile = async (req, res) => {
     try {
         const { name, email } = req.body;
 
-        const user = await User.findById(req.user.id).select("-password -refreshToken");
+        const user = await User.findById(req.user.id).select("-password");
 
         if (!user) {
             return res.status(404).json({
@@ -35,23 +38,8 @@ exports.updateProfile = async (req, res, next) => {
             });
         }
 
-        if (name !== undefined) user.name = name;
-
-        if (email !== undefined){
-            const existingUser = await User.findOne({
-                email,
-                _id: { $ne: user._id }
-            })
-
-            if(existingUser){
-                return res.status(409).json({
-                    success: false,
-                    message: "Email already in use"
-                });
-            }
-
-            user.email = email;
-        }
+        if (name) user.name = name;
+        if (email) user.email = email;
 
         await user.save();
 
@@ -61,11 +49,14 @@ exports.updateProfile = async (req, res, next) => {
             user
         });
     } catch (error) {
-        next(error);
+        res.status(500).json({
+            success: false,
+            message: "Profile update failed"
+        }); 
     }
 };
 
-exports.changePassword = async (req, res, next) => {
+exports.changedPassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
@@ -76,7 +67,7 @@ exports.changePassword = async (req, res, next) => {
         }
 
         const user = await User.findById(req.user.id).select("+password");
-        if(!user){
+        if(user){
             return res.status(404).json({
                 message: "User not found"
             });
@@ -92,20 +83,21 @@ exports.changePassword = async (req, res, next) => {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
 
-        user.refreshToken = null;
-
         await user.save();
 
         res.status(200).json({
-            success: true,
+            success: false,
             message: "Password changed successfully"
         });
     } catch (error) {
-        next(error);
+        res.status(500).json({
+            success: false,
+            message: "An error occurred"
+        });
     }
 };
 
-exports.delete = async (req, res, next) => {
+exports.delete = async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
 
@@ -123,13 +115,16 @@ exports.delete = async (req, res, next) => {
             message: "Account deleted successfully"
         });
     } catch (error) {
-        next(error);
+        res.status(500).json({
+            success: false,
+            message: "An error occurred"
+        });
     }
 };
 
-exports.getUsers = async (req, res) => {
+exports.getUser = async (req, res) => {
     try {
-        const users = await User.find().select("-password -refreshToken").limit(20).sort({ createdAt: -1 });
+        const users = await User.find().select("-password").limit(20);
 
         res.status(200).json({
             success: true,
@@ -137,23 +132,16 @@ exports.getUsers = async (req, res) => {
             users
         });
     } catch (error){
-        next(error);
+        res.status(500).json({
+            success: false,
+            message: "Failed"
+        });
     }
 };
 
-exports.getUserById = async (req, res, next) => {
+exports.getUserId = async (req, res) => {
     try {
-        const isAdmin = req.user.role === "admin";
-        const isOwner = req.user.id.toString() === req.params.id;
-
-        if (!isAdmin && !isOwner) {
-            return res.status(403).json({
-                success: false,
-                message: "Access denied"
-            });
-        }
-
-        const user = await User.findById(req.params.id).select("-password -refreshToken");
+        const user = await User.findById(req.params.id).select("-password");
 
         if(!user){
             return res.status(404).json({
@@ -162,20 +150,26 @@ exports.getUserById = async (req, res, next) => {
             });
         }
 
-        res.status(200).json({
-            success: true,
-            user
-        });
+        const allowed = req.user.role === "admin"  || req.user.id.toString() === user.id;
+        if(!allowed){
+            return res.status(403).json({
+                success: false,
+                message: "Failed"
+            });
+        }
     } catch (error) {
-        next(error);
+        res.status(500).json({
+            success: false,
+            message: "Failed"
+        });
     }
 };
 
-exports.updateUser = async (req, res) => {
+exports.updateUSer = async (req, res) => {
     try {
         const { name, email, role } = req.body;
 
-        const user = await User.findById(req.params.id).select("-password -refreshToken");
+        const user = await User.findById(req.params.id).select("-password");
 
         if(!user){
             return res.status(404).json({
@@ -185,32 +179,8 @@ exports.updateUser = async (req, res) => {
         }
 
         if(name !== undefined) user.name = name;
-        if(email !== undefined){
-            const existingUser = await User.findOne({
-                email,
-                _id: { $ne: user._id }
-            });
-
-            if(existingUser){
-                return res.status(409).json({
-                    success: false,
-                    message: "Email already in use"
-                });
-            }
-
-            user.email = email;
-        }
-        if(role !== undefined){
-            const allowedRoles = ["manager", "tenant"];
-            if(!allowedRoles.includes(role)){
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid role"
-                });
-            }
-
-            user.role = role;
-        }
+        if(email !== undefined) user.email = email;
+        if(role !== undefined) user.role;
         
         const updatedUser = await user.save();
 
@@ -219,9 +189,9 @@ exports.updateUser = async (req, res) => {
             message: "User updated successfully",
             data: {
                 _id: updatedUser._id,
-                name: updatedUser.name,
-                email: updatedUser.email,
-                role: updatedUser.role
+                name: updatedUser_name,
+                email: updateUSer.email,
+                role: updateUser.role
             }
         });
     } catch (error) {

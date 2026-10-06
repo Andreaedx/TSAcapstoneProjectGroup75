@@ -22,32 +22,14 @@ const userSchema = new mongoose.Schema(
         role: {
             type: String,
             required: true,
-            enum: ["admin", "manager", "tenant"],
-            default: "tenant"
-        },
-        isEmailVerified: {
-            type: Boolean,
-            default: false
-        },
-        emailVerificationToken: {
-            type: String,
-            select: false
-        },
-        emailVerificationExpires: {
-            type: Date,
-            select: false
+            enum: ["Manager", "Tenant"],
+            default: "Tenant",
+            enum: ["Manager", "Tenant", "admin"],
+            default: "Tenant"
         },
         refreshToken: {
             type: String,
             default: null,
-        },
-        resetPasswordToken: {
-            type: String,
-            default: null
-        },
-        resetPasswordExpires: {
-            type: Date,
-            default: null
         }
     },
     { timestamps: true }

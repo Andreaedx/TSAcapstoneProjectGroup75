@@ -1,8 +1,6 @@
 const authorized = (...roles) => {
     return (req, res, next) => {
-        const userRole = req.user?.role?.toLowerCase();
-
-        if (!userRole || !roles.some((role) => role.toLowerCase() === userRole)) {
+        if(!roles.includes(req.user.role)){
             return res.status(403).json({
                 message: "You do not have permission to perform this action"
             });

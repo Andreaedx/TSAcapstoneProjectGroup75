@@ -3,40 +3,35 @@ const mongoose = require("mongoose");
 const errorHandler = (error, req, res, next) => {
     console.error(error);
 
-    // Mongoose invalid ObjectId
-    if (error instanceof mongoose.Error.CastError) {
+    if(error instanceof mongoose.Error.CastError){
         return res.status(400).json({
             success: false,
             message: `Invalid ${error.path}`
         });
     }
 
-    // Mongoose validation error
-    if (error instanceof mongoose.Error.ValidationError) {
+    if(error instanceof mongoose.Error.ValidationError){
         const messages = Object.values(error.errors).map(
-            (err) => err.message
+            (error) => error.message
         );
 
         return res.status(400).json({
             success: false,
-            message: "Validation failed",
-            errors: messages
+            message: "Validation failed", error: error.messages
         });
     }
 
-    // Custom application errors
-    if (error.statusCode) {
+    if(error.statusCode){
         return res.status(error.statusCode).json({
             success: false,
             message: error.message
         });
     }
 
-    // Unknown/unhandled errors
     return res.status(500).json({
         success: false,
         message: "Something went wrong"
     });
-};
+}
 
 module.exports = errorHandler;
