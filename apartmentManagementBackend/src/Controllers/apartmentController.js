@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const Apartment = require("../Models/apartment");
-const Property = require("../Models/property");
-const Tenancy = require("../Models/tenancy");
+const Apartment = require("../Models/Apartment");
+const Property = require("../Models/Property");
+const Tenancy = require("../Models/Tenancy");
 
 // @desc    Create apartment
 // @route   POST /api/apartments

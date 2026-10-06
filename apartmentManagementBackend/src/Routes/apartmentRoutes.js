@@ -8,8 +8,8 @@ const {
   deleteApartment,
 } = require("../Controllers/apartmentController");
 
-const { protect } = require("../middleware/authMiddleware");
-const { authorized } = require("../middleware/roleMiddleware");
+const { protect } = require("../Middleware/authMiddleware");
+const { authorized } = require("../Middleware/roleMiddleware");
 
 const router = express.Router();
 
