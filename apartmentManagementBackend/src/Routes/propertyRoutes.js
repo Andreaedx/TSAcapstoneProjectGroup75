@@ -32,7 +32,7 @@ router.get("/:id", getPropertyById);
 router.put("/:id", authorized("manager"), updateProperty);
 
 // DELETE PROPERTY
-router.delete("/:id", authorized("manager"), deleteProperty);
+router.delete("/:id", authorized("manager", "admin"), deleteProperty);
 
 
 module.exports = router;
