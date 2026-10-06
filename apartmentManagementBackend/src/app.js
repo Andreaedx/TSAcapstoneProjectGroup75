@@ -10,6 +10,7 @@ const userRoutes = require("./Routes/userRoutes");
 const invoiceRoutes = require("./Routes/invoiceRoutes");
 const apartmentRoutes = require("./Routes/apartmentRoutes");
 const maintenanceRoutes = require("./Routes/maintenanceRoutes");
+const tenancyRoutes = require("./Routes/tenancyRoutes");
 
 const errorHandler = require("./Middleware/errorHandler");
 
@@ -32,6 +33,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/properties", propertyRoutes);
 app.use("/api/apartments", apartmentRoutes);
 app.use("/api/maintenaces", maintenanceRoutes);
+app.use("/api/tenancies", tenancyRoutes);
 
 
 // Error handler MUST come after all routes
