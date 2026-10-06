@@ -1,18 +1,38 @@
 const nodemailer = require("nodemailer");
 
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
+const createTransporter = () => {
+    const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD } = process.env;
+    const port = Number(EMAIL_PORT);
+
+    if (
+        !EMAIL_HOST ||
+        !Number.isInteger(port) ||
+        port < 1 ||
+        port > 65535 ||
+        !EMAIL_USER ||
+        !EMAIL_PASSWORD
+    ) {
+        throw new Error("SMTP configuration requires EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD");
     }
-});
+
+    return nodemailer.createTransport({
+        host: EMAIL_HOST,
+        port,
+        secure: port === 465,
+        auth: {
+            user: EMAIL_USER,
+            pass: EMAIL_PASSWORD
+        }
+    });
+};
+
+const getFromAddress = () => `"RENT A HOME" <${process.env.EMAIL_USER}>`;
 
 const sendPasswordResetMail = async (email, resetToken) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    await transporter.sendMail({
-        from: `"RENT A HOME <${process.env.EMAIL_USER}>`,
+    await createTransporter().sendMail({
+        from: getFromAddress(),
         to: email,
         subject: "Reset your password",
         html: `
@@ -54,8 +74,8 @@ const sendVerificationMail = async (email, verificationToken) => {
     const verificationUrl =
         `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-    await transporter.sendMail({
-        from: `"RENT A HOME <${process.env.EMAIL_USER}>`,
+    await createTransporter().sendMail({
+        from: getFromAddress(),
         to: email,
         subject: "Verify your email address",
         html: `

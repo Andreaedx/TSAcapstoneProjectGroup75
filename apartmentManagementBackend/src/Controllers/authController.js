@@ -59,7 +59,7 @@ exports.register = async (req, res, next) => {
 
             return res.status(500).json({
                 success: false,
-                message: "Unable to send verification email"
+                message: "Unable to send verification email. Check SMTP configuration and try again."
             });
         }
 
@@ -77,9 +77,17 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
+        if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
+            });
+        }
 
-        const user = await User.findOne({ email }).select("+password");
-        if(!user){
+        const normalizedEmail = email.trim().toLowerCase();
+        const user = await User.findOne({ email: normalizedEmail }).select("+password");
+
+        if (!user) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid email or password"

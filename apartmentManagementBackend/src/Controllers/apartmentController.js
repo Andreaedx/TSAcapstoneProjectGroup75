@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const Apartment = require("../Models/apartment");
-const Property = require("../Models/property");
-const Tenancy = require("../Models/tenancy");
+const Apartment = require("../Models/Apartment");
+const Property = require("../Models/Property");
+const Tenancy = require("../Models/Tenancy");
 
 // @desc    Create apartment
 // @route   POST /api/apartments
@@ -27,9 +27,7 @@ const createApartment = async (req, res) => {
     }
 
     // Check that property exists
-      const existingProperty = await Property.findById(property);
-      console.log("PROPERTY MANAGER:", existingProperty.manager.toString());
-      console.log("LOGGED-IN USER:", req.user._id.toString());
+    const existingProperty = await Property.findById(property);
 
     if (!existingProperty) {
       return res.status(404).json({
