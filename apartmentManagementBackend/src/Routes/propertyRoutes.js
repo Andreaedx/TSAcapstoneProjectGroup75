@@ -1,5 +1,8 @@
 const express = require("express");
 
+const { protect } = require("../Middleware/authMiddleware");
+const { authorized } = require("../Middleware/roleMiddleware");
+
 // PROPERTY ROUTES
 const {
     createProperty,
@@ -11,10 +14,13 @@ const {
 
 const router = express.Router();
 
+router.use(protect);
+
+
 // Define routes for property management
 
 // CREATE PROPERTY
-router.post("/", createProperty);
+router.post("/", authorized("manager"), createProperty);
 
 // GET ALL PROPERTIES
 router.get("/", getAllProperties);
@@ -23,10 +29,10 @@ router.get("/", getAllProperties);
 router.get("/:id", getPropertyById);
 
 // UPDATE PROPERTY
-router.put("/:id", updateProperty);
+router.put("/:id", authorized("manager"), updateProperty);
 
 // DELETE PROPERTY
-router.delete("/:id", deleteProperty);
+router.delete("/:id", authorized("manager"), deleteProperty);
 
 
 module.exports = router;
