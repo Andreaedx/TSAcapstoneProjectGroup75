@@ -22,5 +22,3 @@ router.post("/forgot-password", passwordLimiter, authController.forgotPassword);
 router.post("/reset-password/:token", passwordLimiter, authController.resetPassword);
 
 module.exports = router;
-
-module.exports = router;

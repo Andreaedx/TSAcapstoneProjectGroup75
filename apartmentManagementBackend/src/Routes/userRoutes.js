@@ -18,5 +18,4 @@ router.get("/:id", userLimiter, protect, authorized("admin"), userController.get
 router.patch("/:id", sensitiveUserLimiter, protect, authorized("admin"), userController.updateUser);
 router.delete("/:id", sensitiveUserLimiter, protect, authorized("admin"), userController.deleteUser);
 
-
 module.exports = router;
