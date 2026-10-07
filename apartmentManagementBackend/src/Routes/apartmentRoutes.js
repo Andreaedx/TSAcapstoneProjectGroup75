@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/", protect, getApartments);
 
 // CREATE APARTMENT
-router.post("/apartments", protect, authorized("manager"), upload.array("images", 10), createApartment);
+router.post("/apartment", protect, authorized("manager"), upload.array("images", 10), createApartment);
 
 // GET APARTMENT BY ID
 router.get("/:id", protect, getApartmentById);
@@ -32,7 +32,7 @@ router.patch("/:id", protect, authorized("manager"), updateApartment);
 // DELETE APARTMENT
 router.delete("/:id", protect, authorized("manager"), deleteApartment);
 
-router.delete("/apartment/:apartmentId/images/:imageId", protect, authorized("manager"), deleteApartmentImage);
+router.delete("/:apartmentId/images/:imageId", protect, authorized("manager"), deleteApartmentImage);
 
 router.put("/:apartmentId/images/:imageId", protect, authorized("manager"), upload.single("image"), replaceApartmentImage);
 
