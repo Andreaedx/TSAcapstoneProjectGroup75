@@ -90,6 +90,9 @@ async function createTenancy(req, res) {
       status: 'ACTIVE',
     });
 
+    apartment.status = 'OCCUPIED';
+    await apartment.save();
+
     return res.status(201).json(tenancy);
   } catch (error) {
     console.error('createTenancy error:', error);
@@ -275,6 +278,13 @@ async function endTenancy(req, res) {
     tenancy.endDate = endDate;
     tenancy.status = 'ENDED';
     await tenancy.save();
+
+    // Free the apartment once it has no other active tenancy
+    const stillOccupied = await Tenancy.exists({ apartment: tenancy.apartment, status: 'ACTIVE' });
+    if (!stillOccupied) {
+      await Apartment.findByIdAndUpdate(tenancy.apartment, { status: 'VACANT' });
+    }
+
     return res.status(200).json(tenancy);
   } catch (error) {
     console.error('endTenancy error:', error);
