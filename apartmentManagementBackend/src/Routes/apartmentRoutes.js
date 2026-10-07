@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/", protect, getApartments);
 
 // CREATE APARTMENT
-router.post("/apartment", protect, authorized("manager"), upload.array("images", 10), createApartment);
+router.post("/", protect, authorized("manager"), upload.array("images", 10), createApartment);
 
 // GET APARTMENT BY ID
 router.get("/:id", protect, getApartmentById);
