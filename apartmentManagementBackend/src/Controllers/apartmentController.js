@@ -29,8 +29,6 @@ const createApartment = async (req, res) => {
 
     // Check that property exists
     const existingProperty = await Property.findById(property);
-    console.log("PROPERTY MANAGER:", existingProperty.manager.toString());
-    console.log("LOGGED-IN USER:", req.user._id.toString());
 
     if (!existingProperty) {
       return res.status(404).json({
@@ -38,6 +36,10 @@ const createApartment = async (req, res) => {
         message: "Property not found",
       });
     }
+
+    // Debug logs can safely access manager now
+    console.log("PROPERTY MANAGER:", existingProperty.manager.toString());
+    console.log("LOGGED-IN USER:", req.user._id.toString());
 
     // Verify manager owns the property
     if (existingProperty.manager.toString() !== req.user._id.toString()) {
