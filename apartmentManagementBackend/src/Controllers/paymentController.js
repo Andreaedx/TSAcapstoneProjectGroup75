@@ -124,6 +124,10 @@ const createPayment = async (req, res, next) => {
 
         res.status(201).json({ success: true, data: payment });
     } catch (error) {
+        // Duplicate key on the unique `reference` index
+        if (error.code === 11000) {
+            return next(new ApiError(409, "A payment with this reference already exists"));
+        }
         next(error);
     }
 };
