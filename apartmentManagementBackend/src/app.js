@@ -14,7 +14,6 @@ const tenancyRoutes = require("./Routes/tenancyRoutes");
 const paymentRoutes = require("./Routes/paymentRoutes");
 
 const errorHandler = require("./Middleware/errorHandler");
-
 const connectDB = require("./Config/db");
 
 const app = express();

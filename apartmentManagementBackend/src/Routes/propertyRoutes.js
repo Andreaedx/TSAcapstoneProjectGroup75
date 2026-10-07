@@ -1,10 +1,5 @@
 const express = require("express");
-
-const { protect } = require("../Middleware/authMiddleware");
-const { authorized } = require("../Middleware/roleMiddleware");
-
 const upload = require("../Middleware/upload");
-
 
 // PROPERTY ROUTES
 const {
@@ -17,15 +12,16 @@ const {
     replacePropertyImage
 } = require("../Controllers/PropertyController");
 
+const { protect } = require("../Middleware/authMiddleware");
+const { authorized } = require("../Middleware/roleMiddleware");
+
 const router = express.Router();
 
+// Apply protection middleware to all property routes below
 router.use(protect);
 
-
-// Define routes for property management
-
-// CREATE PROPERTY
-router.post("/", protect, authorized("manager"), upload.array("images", 10), createProperty);
+// CREATE PROPERTY (Allows both admin & manager, includes Multer array upload)
+router.post("/", authorized("admin", "manager"), upload.array("images", 10), createProperty);
 
 // GET ALL PROPERTIES
 router.get("/", getAllProperties);
@@ -34,14 +30,15 @@ router.get("/", getAllProperties);
 router.get("/:id", getPropertyById);
 
 // UPDATE PROPERTY
-router.put("/:id", authorized("manager"), updateProperty);
+router.put("/:id", authorized("admin", "manager"), updateProperty);
 
 // DELETE PROPERTY
-router.delete("/:id", authorized("manager", "admin"), deleteProperty);
+router.delete("/:id", authorized("admin", "manager"), deleteProperty);
 
-router.delete("/:propertyId/images/:imageId", protect, authorized("manager"), deletePropertyImage);
+// DELETE SINGLE PROPERTY IMAGE
+router.delete("/:propertyId/images/:imageId", authorized("manager"), deletePropertyImage);
 
-router.put("/:propertyId/images/:imageId", protect, authorized("manager"), upload.single("image"), replacePropertyImage);
-
+// REPLACE SINGLE PROPERTY IMAGE (Includes Multer single upload)
+router.put("/:propertyId/images/:imageId", authorized("manager"), upload.single("image"), replacePropertyImage);
 
 module.exports = router;
