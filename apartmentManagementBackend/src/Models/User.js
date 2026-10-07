@@ -25,6 +25,16 @@ const userSchema = new mongoose.Schema(
             enum: ["admin", "manager", "tenant"],
             default: "tenant"
         },
+        profilePicture: {
+            url: {
+                type: String,
+                default: null
+            },
+            publicId: {
+                type: String,
+                default: null
+            }
+        },
         isEmailVerified: {
             type: Boolean,
             default: false
