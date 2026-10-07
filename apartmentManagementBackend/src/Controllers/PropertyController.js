@@ -1,10 +1,19 @@
 const Property = require("../Models/Property");
 const Apartment = require("../Models/Apartment");
+const Tenancy = require("../Models/Tenancy");
 
 const {
   deleteFromCloudinary,
   deleteManyFromCloudinary,
 } = require("../Utils/cloudinary");
+
+// Escape regex special characters so user input is matched literally
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Admins can manage any property; managers only their own
+const canManageProperty = (user, property) =>
+  user?.role === "admin" ||
+  (!!property.manager && !!user?._id && property.manager.toString() === user._id.toString());
 
 // CREATE PROPERTY
 const createProperty = async (req, res, next) => {
@@ -70,22 +79,23 @@ const getAllProperties = async (req, res, next) => {
 
     // Search
     if (search) {
+      const safeSearch = escapeRegex(search);
       filter.$or = [
         {
           name: {
-            $regex: search,
+            $regex: safeSearch,
             $options: "i",
           },
         },
         {
           address: {
-            $regex: search,
+            $regex: safeSearch,
             $options: "i",
           },
         },
         {
           city: {
-            $regex: search,
+            $regex: safeSearch,
             $options: "i",
           },
         },
@@ -95,7 +105,7 @@ const getAllProperties = async (req, res, next) => {
     // Filter by city
     if (city) {
       filter.city = {
-        $regex: `^${city}$`,
+        $regex: `^${escapeRegex(city)}$`,
         $options: "i",
       };
     }
@@ -177,11 +187,7 @@ const updateProperty = async (req, res, next) => {
     }
 
     // Authorization
-    if (
-      !property.manager ||
-      !req.user?._id ||
-      property.manager.toString() !== req.user._id.toString()
-    ) {
+    if (!canManageProperty(req.user, property)) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to modify this property",
@@ -233,11 +239,7 @@ const deleteProperty = async (req, res, next) => {
     }
 
     // Authorization
-    if (
-      !property.manager ||
-      !req.user?._id ||
-      property.manager.toString() !== req.user._id.toString()
-    ) {
+    if (!canManageProperty(req.user, property)) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to delete this property",
@@ -249,6 +251,20 @@ const deleteProperty = async (req, res, next) => {
     const apartments = await Apartment.find({
       property: propertyId,
     });
+
+    // Block deletion while any apartment still has an active tenancy
+    const activeTenancy = await Tenancy.findOne({
+      apartment: { $in: apartments.map((apartment) => apartment._id) },
+      status: "ACTIVE",
+    });
+
+    if (activeTenancy) {
+      return res.status(409).json({
+        success: false,
+        message: "Cannot delete a property that has apartments with active tenancies",
+        data: null,
+      });
+    }
 
     // Collect property image IDs
     const propertyImageIds = (property.images || [])

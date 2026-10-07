@@ -103,7 +103,7 @@ exports.updateProfile = async (req, res, next) => {
         await user.save();
 
         res.status(200).json({
-            succes: true,
+            success: true,
             message: "Profile successfully updated",
             user
         });
