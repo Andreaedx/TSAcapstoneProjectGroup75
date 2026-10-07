@@ -35,7 +35,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/properties", propertyRoutes);
 app.use("/api/apartments", apartmentRoutes);
-app.use("/api/maintenaces", maintenanceRoutes);
+app.use("/api/maintenances", maintenanceRoutes);
 app.use("/api/tenancies", tenancyRoutes);
 app.use("/api/payments", paymentRoutes);
 
