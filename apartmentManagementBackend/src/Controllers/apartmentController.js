@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Apartment = require("../Models/Apartment");
 const Property = require("../Models/Property");
 const Tenancy = require("../Models/Tenancy");
+const { deleteFromCloudinary, deleteManyFromCloudinary } = require("../Utils/cloudinary");
 
 // @desc    Create apartment
 // @route   POST /api/apartments
@@ -27,9 +28,9 @@ const createApartment = async (req, res) => {
     }
 
     // Check that property exists
-      const existingProperty = await Property.findById(property);
-      console.log("PROPERTY MANAGER:", existingProperty.manager.toString());
-      console.log("LOGGED-IN USER:", req.user._id.toString());
+    const existingProperty = await Property.findById(property);
+    console.log("PROPERTY MANAGER:", existingProperty.manager.toString());
+    console.log("LOGGED-IN USER:", req.user._id.toString());
 
     if (!existingProperty) {
       return res.status(404).json({
@@ -86,6 +87,12 @@ const createApartment = async (req, res) => {
       });
     }
 
+    const images = req.files ? req.files.map((file) => ({
+      url: file.path,
+      publicId: file.filename,
+    }))
+      : [];
+
     // Create apartment
     const apartment = await Apartment.create({
       property,
@@ -94,6 +101,7 @@ const createApartment = async (req, res) => {
       rentAmount,
       status,
       description,
+      images
     });
 
     return res.status(201).json({
@@ -432,6 +440,12 @@ const deleteApartment = async (req, res) => {
       });
     }
 
+    const publicIds = apartment.images.map(
+      (image) => image.publicId
+    );
+
+    await deleteManyFromCloudinary(publicIds);
+
     // Delete apartment
     await Apartment.findByIdAndDelete(id);
 
@@ -449,10 +463,151 @@ const deleteApartment = async (req, res) => {
   }
 };
 
+const deleteApartmentImage = async (req, res) => {
+  try {
+    const { apartmentId, imageId } = req.params;
+
+    const apartment = await Apartment.findById(apartmentId);
+
+    if (!apartment) {
+      return res.status(404).json({
+        status: "error",
+        message: "Apartment not found",
+      });
+    }
+
+    const property = await Property.findById(
+      apartment.property
+    );
+
+    if (!property) {
+      return res.status(404).json({
+        status: "error",
+        message: "Property not found",
+      });
+    }
+
+    if (
+      property.manager.toString() !==
+      req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        status: "error",
+        message: "You are not authorized to modify this apartment",
+      });
+    }
+
+    const image = apartment.images.id(imageId);
+
+    if (!image) {
+      return res.status(404).json({
+        status: "error",
+        message: "Image not found",
+      });
+    }
+
+    await deleteFromCloudinary(image.publicId);
+
+    image.deleteOne();
+
+    await apartment.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Image deleted successfully",
+      data: apartment,
+    });
+  } catch (error) {
+    console.error("Delete apartment image error:", error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Server error while deleting image",
+    });
+  }
+};
+
+const replaceApartmentImage = async (req, res) => {
+  try {
+    const { apartmentId, imageId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({
+        status: "error",
+        message: "New image is required",
+      });
+    }
+
+    const apartment = await Apartment.findById(apartmentId);
+
+    if (!apartment) {
+      return res.status(404).json({
+        status: "error",
+        message: "Apartment not found",
+      });
+    }
+
+    const property = await Property.findById(
+      apartment.property
+    );
+
+    if (!property) {
+      return res.status(404).json({
+        status: "error",
+        message: "Property not found",
+      });
+    }
+
+    if (
+      property.manager.toString() !==
+      req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        status: "error",
+        message: "You are not authorized to modify this apartment",
+      });
+    }
+
+    const image = apartment.images.id(imageId);
+
+    if (!image) {
+      return res.status(404).json({
+        status: "error",
+        message: "Image not found",
+      });
+    }
+
+    const oldPublicId = image.publicId;
+
+    image.url = req.file.path;
+    image.publicId = req.file.filename;
+
+    await apartment.save();
+
+    await deleteFromCloudinary(oldPublicId);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Image replaced successfully",
+      data: apartment,
+    });
+  } catch (error) {
+    console.error("Replace apartment image error:", error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Server error while replacing image",
+    });
+  }
+};
+
+
 module.exports = {
   createApartment,
   getApartments,
   getApartmentById,
   updateApartment,
   deleteApartment,
+  deleteApartmentImage,
+  replaceApartmentImage
 };

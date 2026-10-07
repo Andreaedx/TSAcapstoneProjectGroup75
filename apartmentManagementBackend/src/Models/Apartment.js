@@ -44,7 +44,21 @@ const apartmentSchema = new mongoose.Schema(
         description: {
             type: String,
             default: ""
-        }
+        },
+
+        images: [
+            {
+                url: {
+                    type: String,
+                    required: true,
+                },
+                publicId: {
+                    type: String,
+                    required: true,
+                },
+            },
+        ],
+
     },
 
     { timestamps: true }

@@ -1,5 +1,7 @@
 const User = require("../Models/User");
 const bcrypt = require("bcryptjs");
+const cloudinary = require("../Config/cloudinary");
+
 
 
 exports.getProfile = async (req, res, next) => {
@@ -21,6 +23,51 @@ exports.getProfile = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.uploadProfilePicture = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Profile picture is required"
+            });
+        }
+
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Delete old profile picture from Cloudinary
+        if (user.profilePicture?.publicId) {
+            await cloudinary.uploader.destroy(
+                user.profilePicture.publicId
+            );
+        }
+
+        // Save new profile picture
+        user.profilePicture = {
+            url: req.file.path,
+            publicId: req.file.filename
+        };
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile picture updated successfully",
+            profilePicture: user.profilePicture
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 exports.updateProfile = async (req, res, next) => {
     try {
@@ -256,3 +303,4 @@ exports.deleteUser = async (req, res) => {
         });
     }
 };
+

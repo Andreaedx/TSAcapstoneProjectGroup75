@@ -3,12 +3,14 @@ const router = express.Router();
 
 const userController = require("../Controllers/userController");
 
+const profileUpload = require("../Middleware/profileUpload");
+
 const { protect } = require("../Middleware/authMiddleware");
 const { authorized } = require("../Middleware/roleMiddleware");
-
 const { userLimiter, sensitiveUserLimiter } = require("../Middleware/rateLimiter");
 
 router.get("/profile", protect, authorized("tenant", "manager"), userController.getProfile);
+router.post("/profile-picture", protect, authorized("tenant", "manager"), profileUpload.single("profilePicture"), userController.uploadProfilePicture);
 router.patch("/profile", userLimiter, protect, authorized("tenant", "manager"), userController.updateProfile);
 router.patch("/password", sensitiveUserLimiter, protect, authorized("tenant", "manager"), userController.changePassword);
 router.delete("/delete", sensitiveUserLimiter, protect, authorized("tenant", "manager"), userController.delete);
