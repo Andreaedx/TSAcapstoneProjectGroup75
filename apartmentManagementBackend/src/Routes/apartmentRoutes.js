@@ -6,10 +6,14 @@ const {
   getApartmentById,
   updateApartment,
   deleteApartment,
+  deleteApartmentImage,
+  replaceApartmentImage
 } = require("../Controllers/apartmentController");
 
-const { protect } = require("../middleware/authMiddleware");
-const { authorized } = require("../middleware/roleMiddleware");
+const { protect } = require("../Middleware/authMiddleware");
+const { authorized } = require("../Middleware/roleMiddleware");
+
+const upload = require("../Middleware/upload");
 
 const router = express.Router();
 
@@ -17,7 +21,7 @@ const router = express.Router();
 router.get("/", protect, getApartments);
 
 // CREATE APARTMENT
-router.post("/", protect, authorized("manager"), createApartment);
+router.post("/", protect, authorized("manager"), upload.array("images", 10), createApartment);
 
 // GET APARTMENT BY ID
 router.get("/:id", protect, getApartmentById);
@@ -27,5 +31,10 @@ router.patch("/:id", protect, authorized("manager"), updateApartment);
 
 // DELETE APARTMENT
 router.delete("/:id", protect, authorized("manager"), deleteApartment);
+
+router.delete("/:apartmentId/images/:imageId", protect, authorized("manager"), deleteApartmentImage);
+
+router.put("/:apartmentId/images/:imageId", protect, authorized("manager"), upload.single("image"), replaceApartmentImage);
+
 
 module.exports = router;

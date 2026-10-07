@@ -19,12 +19,12 @@ const INVOICE_POPULATE = {
 // Tenants can only reach invoices tied to their own tenancies.
 // Managers can only reach invoices for tenancies inside properties they manage.
 const getAccessibleTenancyIds = async (user) => {
-    if (user.role === "Tenant") {
+    if (user.role === "tenant") {
         const tenancies = await Tenancy.find({ tenant: user._id }).select("_id");
         return tenancies.map((tenancy) => tenancy._id);
     }
 
-    if (user.role === "Manager") {
+    if (user.role === "manager") {
         const properties = await Property.find({ manager: user._id }).select("_id");
         const apartments = await Apartment.find({
             property: { $in: properties.map((property) => property._id) },
@@ -75,7 +75,7 @@ const createInvoice = async (req, res, next) => {
             throw ApiError.notFound("Property not found for this tenancy");
         }
 
-        if (req.user.role === "Manager" && !property.manager.equals(req.user._id)) {
+        if (req.user.role === "manager" && !property.manager.equals(req.user._id)) {
             throw ApiError.forbidden("You can only create invoices for your own properties");
         }
 

@@ -14,10 +14,10 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post("/", authorized("Tenant"), createMaintenanceRequest);
+router.post("/", authorized("tenant"), createMaintenanceRequest);
 router.get("/", getMaintenanceRequests);
 router.get("/:id", getMaintenanceRequestById);
 router.patch("/:id", updateMaintenanceRequest);
-router.patch("/:id/status", authorized("Manager"), updateMaintenanceStatus);
+router.patch("/:id/status", authorized("manager"), updateMaintenanceStatus);
 
 module.exports = router;
