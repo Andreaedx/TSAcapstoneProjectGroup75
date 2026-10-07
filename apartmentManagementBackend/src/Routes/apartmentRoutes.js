@@ -32,7 +32,7 @@ router.patch("/:id", protect, authorized("manager"), updateApartment);
 // DELETE APARTMENT
 router.delete("/:id", protect, authorized("manager"), deleteApartment);
 
-router.delete("/apartments/:apartmentId/images/:imageId", protect, authorized("manager"), deleteApartmentImage);
+router.delete("/apartment/:apartmentId/images/:imageId", protect, authorized("manager"), deleteApartmentImage);
 
 router.put("/:apartmentId/images/:imageId", protect, authorized("manager"), upload.single("image"), replaceApartmentImage);
 
