@@ -126,6 +126,14 @@ exports.changePassword = async (req, res, next) => {
             });
         }
 
+        // Same minimum as registration and password reset
+        if (typeof newPassword !== "string" || newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters"
+            });
+        }
+
         const user = await User.findById(req.user.id).select("+password");
         if(!user){
             return res.status(404).json({
@@ -178,7 +186,7 @@ exports.delete = async (req, res, next) => {
     }
 };
 
-exports.getUsers = async (req, res) => {
+exports.getUsers = async (req, res, next) => {
     try {
         const users = await User.find().select("-password -refreshToken").limit(20).sort({ createdAt: -1 });
 
@@ -222,7 +230,7 @@ exports.getUserById = async (req, res, next) => {
     }
 };
 
-exports.updateUser = async (req, res) => {
+exports.updateUser = async (req, res, next) => {
     try {
         const { name, email, role } = req.body;
 
@@ -276,10 +284,7 @@ exports.updateUser = async (req, res) => {
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Failed to update"
-        });
+        next(error);
     }
 };
 
@@ -383,7 +388,7 @@ exports.reviewManagerRequest = async (req, res, next) => {
     }
 };
 
-exports.deleteUser = async (req, res) => {
+exports.deleteUser = async (req, res, next) => {
     try{
         const user = await User.findById(req.params.id)
 
@@ -401,10 +406,7 @@ exports.deleteUser = async (req, res) => {
             message: "User deleted successfully"
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Failed to delete user"
-        });
+        next(error);
     }
 };
 

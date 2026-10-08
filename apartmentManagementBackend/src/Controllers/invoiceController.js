@@ -70,6 +70,11 @@ const createInvoice = async (req, res, next) => {
             throw ApiError.notFound("Tenancy not found");
         }
 
+        // Ended tenancies can still get a final invoice; cancelled ones never started
+        if (tenancyDoc.status === "CANCELLED") {
+            throw ApiError.badRequest("Cannot create an invoice for a cancelled tenancy");
+        }
+
         const property = await Property.findById(tenancyDoc.apartment.property);
         if (!property) {
             throw ApiError.notFound("Property not found for this tenancy");

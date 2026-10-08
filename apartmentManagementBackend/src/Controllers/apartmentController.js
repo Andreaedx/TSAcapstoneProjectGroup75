@@ -37,10 +37,6 @@ const createApartment = async (req, res) => {
       });
     }
 
-    // Debug logs can safely access manager now
-    console.log("PROPERTY MANAGER:", existingProperty.manager.toString());
-    console.log("LOGGED-IN USER:", req.user._id.toString());
-
     // Verify manager owns the property
     if (existingProperty.manager.toString() !== req.user._id.toString()) {
       return res.status(403).json({

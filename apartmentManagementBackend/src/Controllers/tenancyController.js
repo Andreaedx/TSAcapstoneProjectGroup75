@@ -49,6 +49,9 @@ async function createTenancy(req, res) {
     if (!apartment) {
       return res.status(404).json({ message: 'Apartment not found.' });
     }
+    if (apartment.status === 'MAINTENANCE') {
+      return res.status(409).json({ message: 'This apartment is under maintenance and cannot be let right now.' });
+    }
 
     if (req.user.role === 'manager') {
       const property = await Property.findById(apartment.property);

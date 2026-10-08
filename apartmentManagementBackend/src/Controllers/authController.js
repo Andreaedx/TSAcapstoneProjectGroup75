@@ -17,6 +17,13 @@ exports.register = async (req, res, next) => {
             });
         }
 
+        if (typeof password !== "string" || password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters"
+            });
+        }
+
         // Everyone starts as a tenant; choosing "manager" only files a request for admin approval
         if (!["tenant", "manager"].includes(accountType)) {
             return res.status(400).json({
@@ -246,12 +253,10 @@ exports.generateRefreshToken = async (req, res, next) => {
                 message: "Refresh token expired. Please login again"
             })
         }
-        res.status(401).json({
+        return res.status(401).json({
             success: false,
             message: "Invalid refresh token"
         });
-
-        next(error);
     }
 }
 
