@@ -1,6 +1,10 @@
+const mongoose = require("mongoose");
 const User = require("../Models/User");
 const bcrypt = require("bcryptjs");
 const cloudinary = require("../Config/cloudinary");
+const { sendManagerRequestDecisionMail } = require("../Utils/sendMail");
+
+const MANAGER_REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED"];
 
 
 
@@ -276,6 +280,106 @@ exports.updateUser = async (req, res) => {
             success: false,
             message: "Failed to update"
         });
+    }
+};
+
+// Admin: list users who registered as managers, filtered by request status (default PENDING)
+exports.getManagerRequests = async (req, res, next) => {
+    try {
+        const status = req.query.status || "PENDING";
+
+        if (!MANAGER_REQUEST_STATUSES.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `status must be one of: ${MANAGER_REQUEST_STATUSES.join(", ")}`
+            });
+        }
+
+        const users = await User.find({ managerRequest: status })
+            .select("name email role isEmailVerified managerRequest createdAt")
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            users
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Admin: approve or reject a pending manager request
+exports.reviewManagerRequest = async (req, res, next) => {
+    try {
+        const { action } = req.body || {};
+
+        if (!["approve", "reject"].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: "action must be either approve or reject"
+            });
+        }
+
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid user id"
+            });
+        }
+
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        if (user.managerRequest !== "PENDING") {
+            return res.status(400).json({
+                success: false,
+                message: "This user has no pending manager request"
+            });
+        }
+
+        if (action === "approve" && !user.isEmailVerified) {
+            return res.status(400).json({
+                success: false,
+                message: "User must verify their email before they can be approved"
+            });
+        }
+
+        if (action === "approve") {
+            user.role = "manager";
+            user.managerRequest = "APPROVED";
+        } else {
+            user.managerRequest = "REJECTED";
+        }
+
+        await user.save();
+
+        // The decision is saved either way; a failed notification email should not undo it
+        try {
+            await sendManagerRequestDecisionMail(user.email, user.name, action === "approve");
+        } catch (error) {
+            console.error("Manager request email failed:", error);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: action === "approve" ? "Manager request approved" : "Manager request rejected",
+            data: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                managerRequest: user.managerRequest
+            }
+        });
+    } catch (error) {
+        next(error);
     }
 };
 

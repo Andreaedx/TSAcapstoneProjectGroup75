@@ -98,7 +98,55 @@ const sendVerificationMail = async (email, verificationToken) => {
 };
 
 
+const escapeHtml = (value) =>
+    String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+
+
+const sendManagerRequestDecisionMail = async (email, name, approved) => {
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+
+    await transporter.sendMail({
+        from: `"RENT A HOME <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: approved
+            ? "Your manager account has been approved"
+            : "Update on your manager account request",
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px;">
+                <h2>Hello ${escapeHtml(name)},</h2>
+
+                ${approved
+                    ? `
+                <p>Your request for a manager account has been <strong>approved</strong>.</p>
+
+                <p>You can now log in and start adding your properties.</p>
+
+                <div style="margin: 30px 0;">
+                    <a href="${loginUrl}"
+                        style="background: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px;">
+                        Log In
+                    </a>
+                </div>
+                    `
+                    : `
+                <p>Your request for a manager account was <strong>not approved</strong>.</p>
+
+                <p>You can still use your account as a tenant. If you think this is a mistake, please contact the administrator.</p>
+                    `}
+            </div>
+        `
+    });
+};
+
+
 module.exports = {
     sendPasswordResetMail,
-    sendVerificationMail
+    sendVerificationMail,
+    sendManagerRequestDecisionMail
 };

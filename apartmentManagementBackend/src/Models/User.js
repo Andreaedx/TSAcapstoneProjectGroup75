@@ -58,6 +58,12 @@ const userSchema = new mongoose.Schema(
         resetPasswordExpires: {
             type: Date,
             default: null
+        },
+        // Set when a user registers as a manager; an admin approves or rejects it
+        managerRequest: {
+            type: String,
+            enum: ["NONE", "PENDING", "APPROVED", "REJECTED"],
+            default: "NONE"
         }
     },
     { timestamps: true }
