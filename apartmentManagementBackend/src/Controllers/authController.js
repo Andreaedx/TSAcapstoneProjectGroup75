@@ -8,12 +8,20 @@ const { sendPasswordResetMail, sendVerificationMail } = require("../Utils/sendMa
 
 exports.register = async (req, res, next) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, accountType = "tenant" } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
                 message: "Input required!"
+            });
+        }
+
+        // Everyone starts as a tenant; choosing "manager" only files a request for admin approval
+        if (!["tenant", "manager"].includes(accountType)) {
+            return res.status(400).json({
+                success: false,
+                message: "accountType must be either tenant or manager"
             });
         }
 
@@ -42,6 +50,7 @@ exports.register = async (req, res, next) => {
             email,
             password: hashedpassword,
             role: "tenant",
+            managerRequest: accountType === "manager" ? "PENDING" : "NONE",
             isEmailVerified: false,
             emailVerificationToken: hashedVerificationToken,
             emailVerificationExpires: Date.now() + 15 * 60 * 1000
@@ -65,7 +74,9 @@ exports.register = async (req, res, next) => {
 
         return res.status(201).json({
             success: true,
-            message: "Registration successful. Please check your email to verify your account."
+            message: accountType === "manager"
+                ? "Registration successful. Please check your email to verify your account. Your manager account is awaiting admin approval."
+                : "Registration successful. Please check your email to verify your account."
         });
 
     } catch (error) {
@@ -129,6 +140,7 @@ exports.login = async (req, res, next) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                managerRequest: user.managerRequest,
                 profilePicture: user.profilePicture
             }
         });

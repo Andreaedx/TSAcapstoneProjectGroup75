@@ -9,13 +9,15 @@ const { protect } = require("../Middleware/authMiddleware");
 const { authorized } = require("../Middleware/roleMiddleware");
 const { userLimiter, sensitiveUserLimiter } = require("../Middleware/rateLimiter");
 
-router.get("/profile", protect, authorized("tenant", "manager"), userController.getProfile);
+router.get("/profile", protect, authorized("tenant", "manager", "admin"), userController.getProfile);
 router.post("/profile-picture", protect, authorized("tenant", "manager"), profileUpload.single("profilePicture"), userController.uploadProfilePicture);
 router.patch("/profile", userLimiter, protect, authorized("tenant", "manager"), userController.updateProfile);
 router.patch("/password", sensitiveUserLimiter, protect, authorized("tenant", "manager"), userController.changePassword);
 router.delete("/delete", sensitiveUserLimiter, protect, authorized("tenant", "manager"), userController.delete);
 
 router.get("/", userLimiter, protect, authorized("admin"), userController.getUsers);
+router.get("/manager-requests", userLimiter, protect, authorized("admin"), userController.getManagerRequests);
+router.patch("/:id/manager-request", userLimiter, protect, authorized("admin"), userController.reviewManagerRequest);
 router.get("/:id", userLimiter, protect, authorized("admin"), userController.getUserById);
 router.patch("/:id", sensitiveUserLimiter, protect, authorized("admin"), userController.updateUser);
 router.delete("/:id", sensitiveUserLimiter, protect, authorized("admin"), userController.deleteUser);
