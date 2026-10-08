@@ -7,12 +7,12 @@ const { sendManagerRequestDecisionMail } = require("../Utils/sendMail");
 const MANAGER_REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED"];
 
 
-
 exports.getProfile = async (req, res, next) => {
     try {
-        const user = await User.findById( req.user.id ).select("-password -refreshToken");
+        const user = await User.findById(req.user.id)
+            .select("-password -refreshToken");
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
@@ -27,6 +27,7 @@ exports.getProfile = async (req, res, next) => {
         next(error);
     }
 };
+
 
 exports.uploadProfilePicture = async (req, res, next) => {
     try {
@@ -77,7 +78,8 @@ exports.updateProfile = async (req, res, next) => {
     try {
         const { name, email } = req.body;
 
-        const user = await User.findById(req.user.id).select("-password -refreshToken");
+        const user = await User.findById(req.user.id)
+            .select("-password -refreshToken");
 
         if (!user) {
             return res.status(404).json({
@@ -86,15 +88,17 @@ exports.updateProfile = async (req, res, next) => {
             });
         }
 
-        if (name !== undefined) user.name = name;
+        if (name !== undefined) {
+            user.name = name;
+        }
 
-        if (email !== undefined){
+        if (email !== undefined) {
             const existingUser = await User.findOne({
                 email,
                 _id: { $ne: user._id }
-            })
+            });
 
-            if(existingUser){
+            if (existingUser) {
                 return res.status(409).json({
                     success: false,
                     message: "Email already in use"
@@ -116,41 +120,59 @@ exports.updateProfile = async (req, res, next) => {
     }
 };
 
+
 exports.changePassword = async (req, res, next) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
-        if(!currentPassword || !newPassword){
+        if (!currentPassword || !newPassword) {
             return res.status(400).json({
-                message: "current password and new password is required"
+                success: false,
+                message: "Current password and new password are required"
             });
         }
 
         // Same minimum as registration and password reset
-        if (typeof newPassword !== "string" || newPassword.length < 6) {
+        if (
+            typeof newPassword !== "string" ||
+            newPassword.length < 6
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Password must be at least 6 characters"
             });
         }
 
-        const user = await User.findById(req.user.id).select("+password");
-        if(!user){
+        const user = await User.findById(req.user.id)
+            .select("+password");
+
+        if (!user) {
             return res.status(404).json({
+                success: false,
                 message: "User not found"
             });
         }
 
-        const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-        if(!isPasswordValid){
+        const isPasswordValid = await bcrypt.compare(
+            currentPassword,
+            user.password
+        );
+
+        if (!isPasswordValid) {
             return res.status(401).json({
-                message: "current password id not correct"
+                success: false,
+                message: "Current password is not correct"
             });
         }
 
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
 
+        user.password = await bcrypt.hash(
+            newPassword,
+            salt
+        );
+
+        // Invalidate existing refresh token after password change
         user.refreshToken = null;
 
         await user.save();
@@ -164,17 +186,18 @@ exports.changePassword = async (req, res, next) => {
     }
 };
 
+
 exports.delete = async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id);
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
         }
-        
+
         await User.findByIdAndDelete(req.user.id);
 
         res.status(200).json({
@@ -186,19 +209,24 @@ exports.delete = async (req, res, next) => {
     }
 };
 
+
 exports.getUsers = async (req, res, next) => {
     try {
-        const users = await User.find().select("-password -refreshToken").limit(20).sort({ createdAt: -1 });
+        const users = await User.find()
+            .select("-password -refreshToken")
+            .limit(20)
+            .sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,
             count: users.length,
             users
         });
-    } catch (error){
+    } catch (error) {
         next(error);
     }
 };
+
 
 exports.getUserById = async (req, res, next) => {
     try {
@@ -212,9 +240,10 @@ exports.getUserById = async (req, res, next) => {
             });
         }
 
-        const user = await User.findById(req.params.id).select("-password -refreshToken");
+        const user = await User.findById(req.params.id)
+            .select("-password -refreshToken");
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
@@ -230,27 +259,32 @@ exports.getUserById = async (req, res, next) => {
     }
 };
 
+
 exports.updateUser = async (req, res, next) => {
     try {
         const { name, email, role } = req.body;
 
-        const user = await User.findById(req.params.id).select("-password -refreshToken");
+        const user = await User.findById(req.params.id)
+            .select("-password -refreshToken");
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
         }
 
-        if(name !== undefined) user.name = name;
-        if(email !== undefined){
+        if (name !== undefined) {
+            user.name = name;
+        }
+
+        if (email !== undefined) {
             const existingUser = await User.findOne({
                 email,
                 _id: { $ne: user._id }
             });
 
-            if(existingUser){
+            if (existingUser) {
                 return res.status(409).json({
                     success: false,
                     message: "Email already in use"
@@ -259,9 +293,11 @@ exports.updateUser = async (req, res, next) => {
 
             user.email = email;
         }
-        if(role !== undefined){
+
+        if (role !== undefined) {
             const allowedRoles = ["manager", "tenant"];
-            if(!allowedRoles.includes(role)){
+
+            if (!allowedRoles.includes(role)) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid role"
@@ -270,7 +306,7 @@ exports.updateUser = async (req, res, next) => {
 
             user.role = role;
         }
-        
+
         const updatedUser = await user.save();
 
         res.status(200).json({
@@ -288,7 +324,9 @@ exports.updateUser = async (req, res, next) => {
     }
 };
 
-// Admin: list users who registered as managers, filtered by request status (default PENDING)
+
+// Admin: list users who registered as managers,
+// filtered by request status (default PENDING)
 exports.getManagerRequests = async (req, res, next) => {
     try {
         const status = req.query.status || "PENDING";
@@ -300,8 +338,12 @@ exports.getManagerRequests = async (req, res, next) => {
             });
         }
 
-        const users = await User.find({ managerRequest: status })
-            .select("name email role isEmailVerified managerRequest createdAt")
+        const users = await User.find({
+            managerRequest: status
+        })
+            .select(
+                "name email role isEmailVerified managerRequest createdAt"
+            )
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -313,6 +355,7 @@ exports.getManagerRequests = async (req, res, next) => {
         next(error);
     }
 };
+
 
 // Admin: approve or reject a pending manager request
 exports.reviewManagerRequest = async (req, res, next) => {
@@ -365,16 +408,26 @@ exports.reviewManagerRequest = async (req, res, next) => {
 
         await user.save();
 
-        // The decision is saved either way; a failed notification email should not undo it
+        // The decision is saved either way;
+        // a failed notification email should not undo it.
         try {
-            await sendManagerRequestDecisionMail(user.email, user.name, action === "approve");
+            await sendManagerRequestDecisionMail(
+                user.email,
+                user.name,
+                action === "approve"
+            );
         } catch (error) {
-            console.error("Manager request email failed:", error);
+            console.error(
+                "Manager request email failed:",
+                error
+            );
         }
 
         res.status(200).json({
             success: true,
-            message: action === "approve" ? "Manager request approved" : "Manager request rejected",
+            message: action === "approve"
+                ? "Manager request approved"
+                : "Manager request rejected",
             data: {
                 _id: user._id,
                 name: user.name,
@@ -388,11 +441,13 @@ exports.reviewManagerRequest = async (req, res, next) => {
     }
 };
 
-exports.deleteUser = async (req, res, next) => {
-    try{
-        const user = await User.findById(req.params.id)
 
-        if(!user){
+// Admin: delete a user
+exports.deleteUser = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
@@ -409,4 +464,3 @@ exports.deleteUser = async (req, res, next) => {
         next(error);
     }
 };
-

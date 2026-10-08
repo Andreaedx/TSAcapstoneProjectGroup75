@@ -2,13 +2,24 @@ const User = require("../Models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { generateToken, generateRefreshToken } = require("../Utils/generateToken");
-const { sendPasswordResetMail, sendVerificationMail } = require("../Utils/sendMail");
+const {
+    generateToken,
+    generateRefreshToken
+} = require("../Utils/generateToken");
+const {
+    sendPasswordResetMail,
+    sendVerificationMail
+} = require("../Utils/sendMail");
 
 
 exports.register = async (req, res, next) => {
     try {
-        const { name, email, password, accountType = "tenant" } = req.body;
+        const {
+            name,
+            email,
+            password,
+            accountType = "tenant"
+        } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({
@@ -24,7 +35,8 @@ exports.register = async (req, res, next) => {
             });
         }
 
-        // Everyone starts as a tenant; choosing "manager" only files a request for admin approval
+        // Everyone starts as a tenant; choosing "manager"
+        // only files a request for admin approval.
         if (!["tenant", "manager"].includes(accountType)) {
             return res.status(400).json({
                 success: false,
@@ -42,7 +54,6 @@ exports.register = async (req, res, next) => {
         }
 
         const salt = await bcrypt.genSalt(10);
-
         const hashedpassword = await bcrypt.hash(password, salt);
 
         const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -57,7 +68,9 @@ exports.register = async (req, res, next) => {
             email,
             password: hashedpassword,
             role: "tenant",
-            managerRequest: accountType === "manager" ? "PENDING" : "NONE",
+            managerRequest: accountType === "manager"
+                ? "PENDING"
+                : "NONE",
             isEmailVerified: false,
             emailVerificationToken: hashedVerificationToken,
             emailVerificationExpires: Date.now() + 15 * 60 * 1000
@@ -69,7 +82,10 @@ exports.register = async (req, res, next) => {
                 verificationToken
             );
         } catch (error) {
-            console.error("Verification email failed:", error);
+            console.error(
+                "Verification email failed:",
+                error
+            );
 
             await User.findByIdAndDelete(user._id);
 
@@ -96,16 +112,22 @@ exports.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
-        const user = await User.findOne({ email }).select("+password");
-        if(!user){
+        const user = await User.findOne({ email })
+            .select("+password");
+
+        if (!user) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid email or password"
             });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if(!isPasswordValid){
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid email and password"
@@ -119,14 +141,13 @@ exports.login = async (req, res, next) => {
             });
         }
 
- 
         const token = generateToken(user.id);
         const refreshToken = generateRefreshToken(user._id);
 
         const hashedRefreshToken = crypto
-        .createHash("sha256")
-        .update(refreshToken)
-        .digest("hex");
+            .createHash("sha256")
+            .update(refreshToken)
+            .digest("hex");
 
         user.refreshToken = hashedRefreshToken;
 
@@ -136,7 +157,7 @@ exports.login = async (req, res, next) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
         return res.status(200).json({
@@ -151,20 +172,22 @@ exports.login = async (req, res, next) => {
                 profilePicture: user.profilePicture
             }
         });
+
     } catch (error) {
         next(error);
     }
 };
 
+
 exports.logout = async (req, res, next) => {
-    try{
+    try {
         const refreshToken = req.cookies.refreshToken;
 
-        if(refreshToken){
+        if (refreshToken) {
             const hashedToken = crypto
-            .createHash("sha256")
-            .update(refreshToken)
-            .digest("hex")
+                .createHash("sha256")
+                .update(refreshToken)
+                .digest("hex");
 
             await User.findOneAndUpdate(
                 { refreshToken: hashedToken },
@@ -182,16 +205,18 @@ exports.logout = async (req, res, next) => {
             success: true,
             message: "Logout successfully"
         });
+
     } catch (error) {
         next(error);
     }
-}
+};
+
 
 exports.generateRefreshToken = async (req, res, next) => {
     try {
-        const refreshToken = req.cookies.refreshToken
+        const refreshToken = req.cookies.refreshToken;
 
-        if(!refreshToken){
+        if (!refreshToken) {
             return res.status(401).json({
                 success: false,
                 message: "Refresh token not found"
@@ -199,22 +224,27 @@ exports.generateRefreshToken = async (req, res, next) => {
         }
 
         const hashedToken = crypto
-        .createHash("sha256")
-        .update(refreshToken)
-        .digest("hex");
+            .createHash("sha256")
+            .update(refreshToken)
+            .digest("hex");
 
-        const user = await User.findOne({ refreshToken: hashedToken });
+        const user = await User.findOne({
+            refreshToken: hashedToken
+        });
 
-        if(!user){
+        if (!user) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid refresh token"
             });
         }
 
-        const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+        const decoded = jwt.verify(
+            refreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        );
 
-        if(decoded.id.toString() !== user.id.toString()){
+        if (decoded.id.toString() !== user.id.toString()) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid refresh token"
@@ -222,13 +252,12 @@ exports.generateRefreshToken = async (req, res, next) => {
         }
 
         const token = generateToken(user._id);
-
-        const newRefreshToken = generateRefreshToken(user._id)
+        const newRefreshToken = generateRefreshToken(user._id);
 
         const newHashedRefreshToken = crypto
-        .createHash("sha256")
-        .update(newRefreshToken)
-        .digest("hex");
+            .createHash("sha256")
+            .update(newRefreshToken)
+            .digest("hex");
 
         user.refreshToken = newHashedRefreshToken;
 
@@ -247,18 +276,20 @@ exports.generateRefreshToken = async (req, res, next) => {
         });
 
     } catch (error) {
-        if(error.name === "TokenExpiredError"){
+        if (error.name === "TokenExpiredError") {
             return res.status(401).json({
                 success: false,
                 message: "Refresh token expired. Please login again"
-            })
+            });
         }
+
         return res.status(401).json({
             success: false,
             message: "Invalid refresh token"
         });
     }
-}
+};
+
 
 exports.forgotPassword = async (req, res, next) => {
     try {
@@ -280,23 +311,31 @@ exports.forgotPassword = async (req, res, next) => {
             });
         }
 
-        const resetToken = crypto.randomBytes(32).toString("hex");
+        const resetToken = crypto
+            .randomBytes(32)
+            .toString("hex");
 
         const hashedToken = crypto
-        .createHash("sha256")
-        .update(resetToken)
-        .digest("hex");
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
 
         user.resetPasswordToken = hashedToken;
-
-        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+        user.resetPasswordExpires =
+            Date.now() + 15 * 60 * 1000;
 
         await user.save();
 
         try {
-            await sendPasswordResetMail(user.email, resetToken);
-        } catch(error){
-            console.error("password reset email failed: ", error);
+            await sendPasswordResetMail(
+                user.email,
+                resetToken
+            );
+        } catch (error) {
+            console.error(
+                "Password reset email failed:",
+                error
+            );
 
             user.resetPasswordToken = null;
             user.resetPasswordExpires = null;
@@ -306,12 +345,12 @@ exports.forgotPassword = async (req, res, next) => {
             return res.status(500).json({
                 success: false,
                 message: "Unable to send reset password token"
-            })
+            });
         }
 
         return res.status(200).json({
             success: true,
-            message: "password reset link will be sent"
+            message: "Password reset link will be sent"
         });
 
     } catch (error) {
@@ -339,7 +378,7 @@ exports.resetPassword = async (req, res, next) => {
             });
         }
 
-        if (newPassword.length < 6) {
+        if (typeof newPassword !== "string" || newPassword.length < 6) {
             return res.status(400).json({
                 success: false,
                 message: "Password must be at least 6 characters"
@@ -347,13 +386,15 @@ exports.resetPassword = async (req, res, next) => {
         }
 
         const hashedToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
 
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
-            resetPasswordExpires: { $gt: Date.now() }
+            resetPasswordExpires: {
+                $gt: Date.now()
+            }
         }).select("+password");
 
         if (!user) {
@@ -372,7 +413,6 @@ exports.resetPassword = async (req, res, next) => {
 
         user.resetPasswordToken = null;
         user.resetPasswordExpires = null;
-
         user.refreshToken = null;
 
         await user.save();
@@ -387,6 +427,7 @@ exports.resetPassword = async (req, res, next) => {
     }
 };
 
+
 exports.verifyEmail = async (req, res, next) => {
     try {
         const { token } = req.params;
@@ -399,13 +440,15 @@ exports.verifyEmail = async (req, res, next) => {
         }
 
         const hashedToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
 
         const user = await User.findOne({
             emailVerificationToken: hashedToken,
-            emailVerificationExpires: { $gt: Date.now() }
+            emailVerificationExpires: {
+                $gt: Date.now()
+            }
         }).select("+emailVerificationToken");
 
         if (!user) {
@@ -416,7 +459,6 @@ exports.verifyEmail = async (req, res, next) => {
         }
 
         user.isEmailVerified = true;
-
         user.emailVerificationToken = null;
         user.emailVerificationExpires = null;
 
