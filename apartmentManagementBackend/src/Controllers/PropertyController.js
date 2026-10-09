@@ -323,11 +323,7 @@ const deletePropertyImage = async (req, res, next) => {
     }
 
     // Authorization
-    if (
-      !property.manager ||
-      !req.user?._id ||
-      property.manager.toString() !== req.user._id.toString()
-    ) {
+    if (!canManageProperty(req.user, property)) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to modify this property",
@@ -387,11 +383,7 @@ const replacePropertyImage = async (req, res, next) => {
     }
 
     // Authorization
-    if (
-      !property.manager ||
-      !req.user?._id ||
-      property.manager.toString() !== req.user._id.toString()
-    ) {
+    if (!canManageProperty(req.user, property)) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to modify this property",
@@ -431,6 +423,58 @@ const replacePropertyImage = async (req, res, next) => {
   }
 };
 
+// ADD IMAGES TO AN EXISTING PROPERTY
+const addPropertyImages = async (req, res, next) => {
+  const uploaded = (req.files || []).map((file) => ({
+    url: file.path,
+    publicId: file.filename,
+  }));
+
+
+  try {
+    if (uploaded.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one image is required",
+      });
+    }
+
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found",
+      });
+    }
+
+    if (!canManageProperty(req.user, property)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to modify this property",
+      });
+    }
+
+    if (property.images.length + uploaded.length > 10) {
+      return res.status(400).json({
+        success: false,
+        message: `A property can have at most 10 images (it has ${property.images.length})`,
+      });
+    }
+
+    property.images.push(...uploaded);
+    await property.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Images added successfully",
+      data: property,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createProperty,
   getAllProperties,
@@ -439,4 +483,5 @@ module.exports = {
   deleteProperty,
   deletePropertyImage,
   replacePropertyImage,
+  addPropertyImages,
 };

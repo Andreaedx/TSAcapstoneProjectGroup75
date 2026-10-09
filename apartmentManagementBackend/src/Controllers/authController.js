@@ -11,6 +11,14 @@ const {
     sendVerificationMail
 } = require("../Utils/sendMail");
 
+// In production the frontend and API are usually on different domains, so the refresh
+// cookie must be sent cross-site (SameSite=None requires Secure). Locally, Strict is fine.
+const isProduction = process.env.NODE_ENV === "production";
+const refreshCookieOptions = {
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "strict"
+};
+
 
 exports.register = async (req, res, next) => {
     try {
@@ -155,8 +163,7 @@ exports.login = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            ...refreshCookieOptions,
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -197,8 +204,7 @@ exports.logout = async (req, res, next) => {
 
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict"
+            ...refreshCookieOptions
         });
 
         res.status(200).json({
@@ -265,8 +271,7 @@ exports.generateRefreshToken = async (req, res, next) => {
 
         res.cookie("refreshToken", newRefreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            ...refreshCookieOptions,
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 

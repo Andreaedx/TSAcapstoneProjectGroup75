@@ -9,8 +9,14 @@ const { deleteFromCloudinary, deleteManyFromCloudinary } = require("../Utils/clo
 // @access  Manager
 const createApartment = async (req, res) => {
   try {
-    const { property, apartmentNumber, type, rentAmount, status, description } =
+    const { property, apartmentNumber, type, status, description } =
       req.body;
+
+    // Uploads with images arrive as form data, where numbers come in as text
+    const rentAmount =
+      typeof req.body.rentAmount === "string" && req.body.rentAmount.trim() !== ""
+        ? Number(req.body.rentAmount)
+        : req.body.rentAmount;
 
     // Validate property ID
     if (!property) {
@@ -54,7 +60,7 @@ const createApartment = async (req, res) => {
     }
 
     // Validate rent amount
-    if (typeof rentAmount !== "number" || rentAmount < 0) {
+    if (typeof rentAmount !== "number" || !Number.isFinite(rentAmount) || rentAmount < 0) {
       return res.status(400).json({
         status: "error",
         message: "Rent amount must be a number greater than or equal to 0",
@@ -600,6 +606,65 @@ const replaceApartmentImage = async (req, res) => {
 };
 
 
+// @desc    Add images to an existing apartment
+// @route   POST /api/apartments/:id/images
+// @access  Manager (owner of the property)
+const addApartmentImages = async (req, res) => {
+  const uploaded = (req.files || []).map((file) => ({
+    url: file.path,
+    publicId: file.filename,
+  }));
+
+
+  try {
+    if (uploaded.length === 0) {
+      return res.status(400).json({
+        status: "error",
+        message: "At least one image is required",
+      });
+    }
+
+    const apartment = await Apartment.findById(req.params.id).populate("property", "manager");
+
+    if (!apartment) {
+      return res.status(404).json({
+        status: "error",
+        message: "Apartment not found",
+      });
+    }
+
+    if (apartment.property?.manager?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: "error",
+        message: "You are not authorized to update this apartment",
+      });
+    }
+
+    if (apartment.images.length + uploaded.length > 10) {
+      return res.status(400).json({
+        status: "error",
+        message: `An apartment can have at most 10 images (it has ${apartment.images.length})`,
+      });
+    }
+
+    apartment.images.push(...uploaded);
+    await apartment.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Images added successfully",
+      data: apartment,
+    });
+  } catch (error) {
+    console.error("Add apartment images error:", error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Server error while adding images",
+    });
+  }
+};
+
 module.exports = {
   createApartment,
   getApartments,
@@ -607,5 +672,6 @@ module.exports = {
   updateApartment,
   deleteApartment,
   deleteApartmentImage,
-  replaceApartmentImage
+  replaceApartmentImage,
+  addApartmentImages
 };

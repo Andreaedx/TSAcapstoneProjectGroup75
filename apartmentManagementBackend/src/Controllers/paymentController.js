@@ -120,6 +120,19 @@ const createPayment = async (req, res, next) => {
             status: "SUCCESSFUL",
         });
 
+        // Two payments submitted at the same moment can both pass the balance check above.
+        // Re-total the payments made up to and including this one (ObjectIds sort by creation);
+        // if that overpays the invoice, this later payment is removed instead of being kept.
+        const upToThisPayment = await Payment.aggregate([
+            { $match: { invoice: invoiceDoc._id, status: "SUCCESSFUL", _id: { $lte: payment._id } } },
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+        ]);
+        if ((upToThisPayment[0]?.total || 0) > invoiceDoc.amount) {
+            await Payment.findByIdAndDelete(payment._id);
+            await recalculateInvoiceStatus(invoice);
+            throw new ApiError(409, "Another payment was made on this invoice at the same time. Please check the balance and try again.");
+        }
+
         await recalculateInvoiceStatus(invoice);
 
         res.status(201).json({ success: true, data: payment });
