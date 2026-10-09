@@ -8,8 +8,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// FRONTEND_URL may list several origins for CORS; email links use the first one
+const frontendUrl = () =>
+    (process.env.FRONTEND_URL || "http://localhost:5173")
+        .split(",")[0]
+        .trim()
+        .replace(/\/$/, "");
+
 const sendPasswordResetMail = async (email, resetToken) => {
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetUrl = `${frontendUrl()}/reset-password/${resetToken}`;
 
     await transporter.sendMail({
         from: `"RENT A HOME <${process.env.EMAIL_USER}>`,
@@ -52,7 +59,7 @@ const sendPasswordResetMail = async (email, resetToken) => {
 
 const sendVerificationMail = async (email, verificationToken) => {
     const verificationUrl =
-        `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+        `${frontendUrl()}/verify-email/${verificationToken}`;
 
     await transporter.sendMail({
         from: `"RENT A HOME <${process.env.EMAIL_USER}>`,
@@ -109,7 +116,7 @@ const escapeHtml = (value) =>
 
 
 const sendManagerRequestDecisionMail = async (email, name, approved) => {
-    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const loginUrl = `${frontendUrl()}/login`;
 
     await transporter.sendMail({
         from: `"RENT A HOME <${process.env.EMAIL_USER}>`,

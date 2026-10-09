@@ -212,15 +212,29 @@ exports.delete = async (req, res, next) => {
 
 exports.getUsers = async (req, res, next) => {
     try {
-        const users = await User.find()
-            .select("-password -refreshToken")
-            .limit(20)
-            .sort({ createdAt: -1 });
+        // ?page=1&limit=20 (limit capped at 100)
+        const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 100);
+
+        const [users, total] = await Promise.all([
+            User.find()
+                .select("-password -refreshToken")
+                .sort({ createdAt: -1 })
+                .skip((page - 1) * limit)
+                .limit(limit),
+            User.countDocuments()
+        ]);
 
         res.status(200).json({
             success: true,
             count: users.length,
-            users
+            users,
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit)
+            }
         });
     } catch (error) {
         next(error);

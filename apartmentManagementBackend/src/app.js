@@ -24,7 +24,10 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    // Comma-separated list in FRONTEND_URL, e.g. "https://app.example.com,http://localhost:5173"
+    origin: (process.env.FRONTEND_URL || "http://localhost:5173")
+      .split(",")
+      .map((url) => url.trim().replace(/\/$/, "")),
     credentials: true,
   })
 );
