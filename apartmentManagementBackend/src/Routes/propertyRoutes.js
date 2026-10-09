@@ -12,22 +12,22 @@ const {
     replacePropertyImage
 } = require("../Controllers/PropertyController");
 
-const { protect } = require("../Middleware/authMiddleware");
+const { protect, optionalAuth } = require("../Middleware/authMiddleware");
 const { authorized } = require("../Middleware/roleMiddleware");
 
 const router = express.Router();
+
+// GET ALL PROPERTIES (public, so visitors can browse listings)
+router.get("/", optionalAuth, getAllProperties);
+
+// GET PROPERTY BY ID (public)
+router.get("/:id", optionalAuth, getPropertyById);
 
 // Apply protection middleware to all property routes below
 router.use(protect);
 
 // CREATE PROPERTY (Allows both admin & manager, includes Multer array upload)
 router.post("/", authorized("admin", "manager"), upload.array("images", 10), createProperty);
-
-// GET ALL PROPERTIES
-router.get("/", getAllProperties);
-
-// GET PROPERTY BY ID
-router.get("/:id", getPropertyById);
 
 // UPDATE PROPERTY
 router.put("/:id", authorized("admin", "manager"), updateProperty);

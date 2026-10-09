@@ -161,7 +161,7 @@ const getApartments = async (req, res) => {
      * Tenants can see apartments according to the
      * project's accessible-apartment rules.
      */
-    if (req.user.role === "manager") {
+    if (req.user?.role === "manager") {
       const properties = await Property.find({
         manager: req.user._id,
       }).select("_id");
@@ -223,7 +223,7 @@ const getApartmentById = async (req, res) => {
 
     // Managers can only access apartments in their properties
     if (
-      req.user.role === "manager" &&
+      req.user?.role === "manager" &&
       apartment.property.manager.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
