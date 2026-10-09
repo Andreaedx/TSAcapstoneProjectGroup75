@@ -325,6 +325,23 @@ exports.updateUser = async (req, res, next) => {
 };
 
 
+// Manager/admin: verified tenants to choose from when creating a tenancy (minimal fields only)
+exports.getTenants = async (req, res, next) => {
+    try {
+        const tenants = await User.find({ role: "tenant", isEmailVerified: true })
+            .select("name email")
+            .sort({ name: 1 });
+
+        res.status(200).json({
+            success: true,
+            count: tenants.length,
+            users: tenants
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // Admin: list users who registered as managers,
 // filtered by request status (default PENDING)
 exports.getManagerRequests = async (req, res, next) => {
