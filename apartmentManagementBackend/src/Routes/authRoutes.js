@@ -11,8 +11,8 @@ const {
 } = require("../Middleware/rateLimiter");
 
 
-router.post("/register", registerLimiter, authController.register); 
-router.get("/verify-email/:token", verificationLimiter, authController.verifyEmail);
+router.post("/register", registerLimiter, authController.register);
+router.post("/verify-email", verificationLimiter, authController.verifyEmail);
 
 router.post("/login", loginLimiter, authController.login); 
 router.post("/logout", authController.logout); 

@@ -29,6 +29,7 @@ exports.register = async (req, res, next) => {
             accountType = "tenant"
         } = req.body;
 
+        // Validate required fields
         if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
@@ -36,15 +37,26 @@ exports.register = async (req, res, next) => {
             });
         }
 
-        if (typeof password !== "string" || password.length < 6) {
+        if (
+            typeof password !== "string" ||
+            password.length < 6
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Password must be at least 6 characters"
             });
         }
 
-        // Everyone starts as a tenant; choosing "manager"
-        // only files a request for admin approval.
+        if (
+            typeof email !== "string" ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a valid email address"
+            });
+        }
+
         if (!["tenant", "manager"].includes(accountType)) {
             return res.status(400).json({
                 success: false,
@@ -52,62 +64,168 @@ exports.register = async (req, res, next) => {
             });
         }
 
-        const existingUser = await User.findOne({ email });
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // Check if the email already exists
+        const existingUser = await User.findOne({
+            email: normalizedEmail
+        });
 
         if (existingUser) {
             return res.status(409).json({
                 success: false,
-                message: `User with this ${email} already exists.`
+                message: "An account with this email already exists."
             });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedpassword = await bcrypt.hash(password, salt);
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        const verificationToken = crypto.randomBytes(32).toString("hex");
+        // Generate a cryptographically secure 6-digit OTP
+        const oneTimeCode = crypto
+            .randomInt(0, 1000000)
+            .toString()
+            .padStart(6, "0");
 
-        const hashedVerificationToken = crypto
+        // Hash OTP before saving it to the database
+        const hashedOneTimeCode = crypto
             .createHash("sha256")
-            .update(verificationToken)
+            .update(oneTimeCode)
             .digest("hex");
 
+        // Create user
         const user = await User.create({
-            name,
-            email,
-            password: hashedpassword,
+            name: name.trim(),
+            email: normalizedEmail,
+            password: hashedPassword,
             role: "tenant",
+
             managerRequest: accountType === "manager"
                 ? "PENDING"
                 : "NONE",
+
             isEmailVerified: false,
-            emailVerificationToken: hashedVerificationToken,
-            emailVerificationExpires: Date.now() + 15 * 60 * 1000
+
+            emailVerificationToken: hashedOneTimeCode,
+
+            emailVerificationExpires:
+                Date.now() + 15 * 60 * 1000
         });
 
+        // Send OTP to user's email
         try {
             await sendVerificationMail(
                 user.email,
-                verificationToken
+                oneTimeCode
             );
         } catch (error) {
-            console.error(
-                "Verification email failed:",
-                error
-            );
+            console.error("Verification email failed:", error);
 
             await User.findByIdAndDelete(user._id);
 
             return res.status(500).json({
                 success: false,
-                message: "Unable to send verification email"
+                message: "Unable to send verification email. Please try again."
             });
         }
 
         return res.status(201).json({
             success: true,
             message: accountType === "manager"
-                ? "Registration successful. Please check your email to verify your account. Your manager account is awaiting admin approval."
-                : "Registration successful. Please check your email to verify your account."
+                ? "Registration successful. A verification code has been sent to your email. Your manager account is awaiting admin approval."
+                : "Registration successful. A verification code has been sent to your email.",
+            email: normalizedEmail
+        });
+
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "An account with this email already exists."
+            });
+        }
+
+        next(error);
+    }
+};
+
+
+exports.verifyEmail = async (req, res, next) => {
+    try {
+        const { email, code } = req.body;
+
+        if (
+            typeof email !== "string" ||
+            typeof code !== "string" ||
+            !/^\d{6}$/.test(code)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid email and 6-digit verification code are required."
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const user = await User.findOne({
+            email: normalizedEmail
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found."
+            });
+        }
+
+        if (user.isEmailVerified) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is already verified."
+            });
+        }
+
+        const expiresAt = user.emailVerificationExpires
+            ? new Date(user.emailVerificationExpires).getTime()
+            : 0;
+
+        if (
+            !user.emailVerificationToken ||
+            !expiresAt ||
+            expiresAt <= Date.now()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Verification code has expired. Please request a new code."
+            });
+        }
+
+        const hashedCode = crypto
+            .createHash("sha256")
+            .update(code)
+            .digest("hex");
+
+        const isCodeValid = crypto.timingSafeEqual(
+            Buffer.from(hashedCode, "hex"),
+            Buffer.from(user.emailVerificationToken, "hex")
+        );
+
+        if (!isCodeValid) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification code."
+            });
+        }
+
+        user.isEmailVerified = true;
+        user.emailVerificationToken = undefined;
+        user.emailVerificationExpires = undefined;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully."
         });
 
     } catch (error) {
@@ -425,53 +543,6 @@ exports.resetPassword = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             message: "Password reset successfully. Please login again"
-        });
-
-    } catch (error) {
-        next(error);
-    }
-};
-
-
-exports.verifyEmail = async (req, res, next) => {
-    try {
-        const { token } = req.params;
-
-        if (!token) {
-            return res.status(400).json({
-                success: false,
-                message: "Verification token is required"
-            });
-        }
-
-        const hashedToken = crypto
-            .createHash("sha256")
-            .update(token)
-            .digest("hex");
-
-        const user = await User.findOne({
-            emailVerificationToken: hashedToken,
-            emailVerificationExpires: {
-                $gt: Date.now()
-            }
-        }).select("+emailVerificationToken");
-
-        if (!user) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid or expired verification token"
-            });
-        }
-
-        user.isEmailVerified = true;
-        user.emailVerificationToken = null;
-        user.emailVerificationExpires = null;
-
-        await user.save();
-
-        return res.status(200).json({
-            success: true,
-            message: "Email verified successfully. You can now login."
         });
 
     } catch (error) {

@@ -10,6 +10,14 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+transporter.verify()
+    .then(() => {
+        console.log("SMTP connection successful");
+    })
+    .catch((error) => {
+        console.error("SMTP connection failed:", error.message);
+    });
+    
 // FRONTEND_URL may list several origins for CORS; email links use the first one
 const frontendUrl = () =>
     (process.env.FRONTEND_URL || "http://localhost:5173")
@@ -63,40 +71,23 @@ const sendPasswordResetMail = async (email, resetToken) => {
     });
 };
 
-const sendVerificationMail = async (email, verificationToken) => {
-    const verificationUrl =
-        `${frontendUrl()}/verify-email/${verificationToken}`;
-
-    await sendMail({
-        email,
-        subject: "Verify your email address",
+const sendVerificationMail = async (email, code) => {
+    await transporter.sendMail({
+        from: process.env.EMAIL_FROM,
+        to: email,
+        subject: "Verify Your Email Address",
+        text: `Your email verification code is ${code}. This code expires in 15 minutes.`,
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px;">
-                <h2>Verify Your Email</h2>
-
-                <p>Thank you for creating an account with RENT A HOME.</p>
-                <p>Please click the button below to verify your email address.</p>
-
-                <div style="margin: 30px 0;">
-                    <a href="${verificationUrl}"
-                        style="background: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px;">
-                        Verify Email
-                    </a>
-                </div>
-
-                <p>This verification link expires in <strong>15 minutes</strong>.</p>
-                <p>If you did not create this account, you can safely ignore this email.</p>
-
-                <p style="color: #888; font-size: 12px;">
-                    If the button doesn't work, copy this link:
-                </p>
-                <p style="color: #666; font-size: 12px; word-break: break-all;">
-                    ${verificationUrl}
-                </p>
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2>Email Verification</h2>
+                <p>Use the code below to verify your email address:</p>
+                <h1 style="letter-spacing: 8px;">${code}</h1>
+                <p>This code expires in 15 minutes.</p>
+                <p>If you did not create this account, ignore this email.</p>
             </div>
-        `,
+        `
     });
-};
+};                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
 
 const escapeHtml = (value) =>
     String(value).replace(/[&<>"']/g, (char) => ({
