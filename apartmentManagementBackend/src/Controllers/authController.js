@@ -2,14 +2,8 @@ const User = require("../Models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const {
-    generateToken,
-    generateRefreshToken
-} = require("../Utils/generateToken");
-const {
-    sendPasswordResetMail,
-    sendVerificationMail
-} = require("../Utils/sendMail");
+const { generateToken, generateRefreshToken } = require("../Utils/generateToken");
+const { sendPasswordResetMail, sendVerificationMail } = require("../Utils/sendMail");
 
 // In production the frontend and API are usually on different domains, so the refresh
 // cookie must be sent cross-site (SameSite=None requires Secure). Locally, Strict is fine.
@@ -154,6 +148,7 @@ exports.verifyEmail = async (req, res, next) => {
     try {
         const { email, code } = req.body;
 
+        // Validate request body
         if (
             typeof email !== "string" ||
             typeof code !== "string" ||
@@ -167,9 +162,12 @@ exports.verifyEmail = async (req, res, next) => {
 
         const normalizedEmail = email.trim().toLowerCase();
 
+        // Explicitly retrieve fields excluded by select: false
         const user = await User.findOne({
             email: normalizedEmail
-        });
+        }).select(
+            "+emailVerificationToken +emailVerificationExpires"
+        );
 
         if (!user) {
             return res.status(404).json({
@@ -185,13 +183,25 @@ exports.verifyEmail = async (req, res, next) => {
             });
         }
 
-        const expiresAt = user.emailVerificationExpires
-            ? new Date(user.emailVerificationExpires).getTime()
-            : 0;
-
+        // Ensure a verification token and expiration exist
         if (
             !user.emailVerificationToken ||
-            !expiresAt ||
+            !user.emailVerificationExpires
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Verification code is missing or expired. Please request a new code."
+            });
+        }
+
+        // Convert expiration to milliseconds
+        const expiresAt = new Date(
+            user.emailVerificationExpires
+        ).getTime();
+
+        // Reject invalid or expired dates
+        if (
+            !Number.isFinite(expiresAt) ||
             expiresAt <= Date.now()
         ) {
             return res.status(400).json({
@@ -200,14 +210,25 @@ exports.verifyEmail = async (req, res, next) => {
             });
         }
 
+        // Hash the submitted code before comparison
         const hashedCode = crypto
             .createHash("sha256")
             .update(code)
             .digest("hex");
 
+        const storedToken = user.emailVerificationToken;
+
+        // Validate the stored hash format before timing-safe comparison
+        if (!/^[a-f0-9]{64}$/i.test(storedToken)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification token. Please request a new code."
+            });
+        }
+
         const isCodeValid = crypto.timingSafeEqual(
             Buffer.from(hashedCode, "hex"),
-            Buffer.from(user.emailVerificationToken, "hex")
+            Buffer.from(storedToken, "hex")
         );
 
         if (!isCodeValid) {
@@ -217,6 +238,7 @@ exports.verifyEmail = async (req, res, next) => {
             });
         }
 
+        // Mark email as verified
         user.isEmailVerified = true;
         user.emailVerificationToken = undefined;
         user.emailVerificationExpires = undefined;
