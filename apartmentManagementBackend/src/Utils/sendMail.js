@@ -1,24 +1,8 @@
-const nodemailer = require("nodemailer");
+const { BrevoClient } = require("@getbrevo/brevo");
 
-// Create Brevo SMTP transporter
-const transporter = nodemailer.createTransport({
-    host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
-    port: Number(process.env.BREVO_SMTP_PORT) || 587,
-    secure: Number(process.env.BREVO_SMTP_PORT || 587) === 465,
-    auth: {
-        user: process.env.BREVO_SMTP_USER,
-        pass: process.env.BREVO_SMTP_PASSWORD,
-    },
+const brevo = new BrevoClient({
+    apiKey: process.env.BREVO_API_KEY,
 });
-
-// Verify SMTP connection
-transporter.verify()
-    .then(() => {
-        console.log("SMTP connection successful");
-    })
-    .catch((error) => {
-        console.error("SMTP connection failed:", error.message);
-    });
 
 // FRONTEND_URL may contain multiple origins.
 // Email links use the first configured origin.
@@ -26,9 +10,9 @@ const frontendUrl = () =>
     (process.env.FRONTEND_URL || "http://localhost:5173")
         .split(",")[0]
         .trim()
-        .replace(/\/$/, "");
+        .replace(/\/+$/, "");
 
-// Escape HTML to prevent user-provided text from injecting markup
+// Escape HTML to prevent user-provided text from injecting markup.
 const escapeHtml = (value) =>
     String(value).replace(/[&<>"']/g, (char) => ({
         "&": "&amp;",
@@ -38,43 +22,68 @@ const escapeHtml = (value) =>
         "'": "&#39;",
     })[char]);
 
-// Shared email sender for all email types
+// Shared email sender for all email types.
 const sendMail = async ({ email, subject, html, text }) => {
     const senderEmail = process.env.BREVO_SENDER_EMAIL?.trim();
-    const senderName =
-        process.env.BREVO_SENDER_NAME?.trim() || "RENT A HOME";
+    const senderName = process.env.BREVO_SENDER_NAME?.trim() || "RENT A HOME";
 
-    // Validate sender configuration
+    if (!process.env.BREVO_API_KEY) {
+        throw new Error("Missing BREVO_API_KEY in .env.");
+    }
+
     if (
         !senderEmail ||
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)
     ) {
         throw new Error(
-            "Invalid or missing BREVO_SENDER_EMAIL. Check your .env file."
+            "Invalid or missing BREVO_SENDER_EMAIL in .env."
         );
     }
 
-    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
-        throw new Error(
-            "Missing BREVO_SMTP_USER or BREVO_SMTP_PASSWORD in .env."
-        );
+    if (
+        !email ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+        throw new Error("Invalid recipient email address.");
     }
 
-    return transporter.sendMail({
-        from: {
-            name: senderName,
-            address: senderEmail,
-        },
-        to: email,
-        subject,
-        text,
-        html,
-    });
+    try {
+        const response = await brevo.transactionalEmails.sendTransacEmail({
+
+            sender: {
+                name: senderName,
+                email: senderEmail,
+            },
+            to: [
+                {
+                    email,
+                },
+            ],
+            subject,
+            htmlContent: html,
+            textContent: text,
+        });
+
+        console.log("Email sent successfully. Message ID:", response?.messageId ?? "Accepted by Brevo");
+
+        return response;
+    } catch (error) {
+        console.error(
+            "Brevo email error:",
+            error?.response?.body ||
+            error?.response?.data ||
+            error?.message ||
+            error
+        );
+
+        // Allow the calling function to handle the failure.
+        throw error;
+    }
 };
 
-// Send email verification code
+// Send email verification code.
 const sendVerificationMail = async (email, code) => {
-    await sendMail({
+    return sendMail({
         email,
         subject: "Verify Your Email Address",
         text: `Your email verification code is ${code}. This code expires in 15 minutes.`,
@@ -98,12 +107,12 @@ const sendVerificationMail = async (email, code) => {
     });
 };
 
-// Send password reset email
+// Send password reset email.
 const sendPasswordResetMail = async (email, resetToken) => {
     const resetUrl =
         `${frontendUrl()}/reset-password/${encodeURIComponent(resetToken)}`;
 
-    await sendMail({
+    return sendMail({
         email,
         subject: "Reset Your Password",
         text: `We received a request to reset your password. Open this link to continue: ${resetUrl}. This link expires in 15 minutes.`,
@@ -138,9 +147,10 @@ const sendPasswordResetMail = async (email, resetToken) => {
     });
 };
 
-// Notify a manager whether their account request was approved
+// Notify a manager whether their account request was approved.
 const sendManagerRequestDecisionMail = async (email, name, approved) => {
     const loginUrl = `${frontendUrl()}/login`;
+    const safeName = escapeHtml(name);
 
     const subject = approved
         ? "Your Manager Account Has Been Approved"
@@ -149,7 +159,7 @@ const sendManagerRequestDecisionMail = async (email, name, approved) => {
     const html = approved
         ? `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px;">
-                <h2>Hello ${escapeHtml(name)},</h2>
+                <h2>Hello ${safeName},</h2>
 
                 <p>Your request for a manager account has been <strong>approved</strong>.</p>
 
@@ -167,7 +177,7 @@ const sendManagerRequestDecisionMail = async (email, name, approved) => {
         `
         : `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px;">
-                <h2>Hello ${escapeHtml(name)},</h2>
+                <h2>Hello ${safeName},</h2>
 
                 <p>Your request for a manager account was <strong>not approved</strong>.</p>
 
@@ -181,7 +191,7 @@ const sendManagerRequestDecisionMail = async (email, name, approved) => {
         ? `Hello ${name}, your manager account request has been approved. Log in here: ${loginUrl}`
         : `Hello ${name}, your manager account request was not approved. You can still use your account as a tenant. Please contact the administrator if you think this is a mistake.`;
 
-    await sendMail({
+    return sendMail({
         email,
         subject,
         text,
