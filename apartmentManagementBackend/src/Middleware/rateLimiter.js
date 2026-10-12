@@ -55,6 +55,18 @@ const verificationLimiter = rateLimit({
     }
 });
 
+// Separate counter from verificationLimiter so resending doesn't use up code attempts
+const resendVerificationLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: "Too many code requests. Please wait a few minutes and try again."
+    }
+});
+
 const userLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -84,6 +96,7 @@ module.exports = {
     passwordLimiter,
     refreshLimiter,
     verificationLimiter,
+    resendVerificationLimiter,
     userLimiter,
     sensitiveUserLimiter
 };
