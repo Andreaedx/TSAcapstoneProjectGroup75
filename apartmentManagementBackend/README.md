@@ -7,7 +7,12 @@ Backend API for the Apartment Management System
 3. `npm run dev` (or `npm start`)
 4. Create the first admin (see below).
 
-Without `EMAIL_USER`/`EMAIL_PASSWORD`, registration fails because the verification email can't be sent. Without the `CLOUDINARY_*` keys, image uploads fail. Everything else works.
+Without `BREVO_API_KEY` and `BREVO_SENDER_EMAIL`, registration fails because the verification code can't be emailed. Without the `CLOUDINARY_*` keys, image uploads fail. Everything else works.
+
+## Email verification
+1. `POST /api/auth/register` emails a 6-digit code (valid 15 minutes).
+2. `POST /api/auth/verify-email` with `{ "email": "...", "code": "123456" }` verifies the account. Login is blocked until then.
+3. `POST /api/auth/resend-verification` with `{ "email": "..." }` sends a fresh code. It gives the same reply whether or not the email is registered.
 
 ## Deploying
 Set these on the hosting service (for example Render or Railway):
@@ -18,7 +23,8 @@ Set these on the hosting service (for example Render or Railway):
 | `FRONTEND_URL` | The deployed frontend address, e.g. `https://your-app.vercel.app`. It's used in email links and allowed by CORS. Add more origins comma-separated |
 | `MONGO_URI` | MongoDB Atlas connection string |
 | `JWT_SECRET`, `REFRESH_TOKEN_SECRET` | Long random strings, different from each other |
-| `EMAIL_USER`, `EMAIL_PASSWORD` | A Gmail address and a Gmail **app password** |
+| `BREVO_API_KEY` | Brevo **API** key (SMTP & API → API Keys), not the SMTP key. Emails go over HTTPS, which hosts like Render don't block (they often block SMTP) |
+| `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME` | A sender address verified in Brevo, and the display name (e.g. `RENT A HOME`) |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | From the Cloudinary dashboard |
 
 Then run `npm run create-admin` once against the production database. The site must be served over HTTPS for the refresh cookie to work in production.

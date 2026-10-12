@@ -7,12 +7,14 @@ const {
     registerLimiter,
     passwordLimiter,
     refreshLimiter,
-    verificationLimiter
+    verificationLimiter,
+    resendVerificationLimiter
 } = require("../Middleware/rateLimiter");
 
 
 router.post("/register", registerLimiter, authController.register);
 router.post("/verify-email", verificationLimiter, authController.verifyEmail);
+router.post("/resend-verification", resendVerificationLimiter, authController.resendVerification);
 
 router.post("/login", loginLimiter, authController.login); 
 router.post("/logout", authController.logout); 

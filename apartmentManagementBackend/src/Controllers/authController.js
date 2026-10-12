@@ -255,6 +255,62 @@ exports.verifyEmail = async (req, res, next) => {
     }
 };
 
+// Sends a fresh verification code to an unverified account.
+// Always gives the same reply so it can't be used to check which emails are registered.
+exports.resendVerification = async (req, res, next) => {
+    const genericReply = {
+        success: true,
+        message: "If this email belongs to an unverified account, a new verification code has been sent."
+    };
+
+    try {
+        const { email } = req.body || {};
+
+        if (typeof email !== "string" || !email.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required."
+            });
+        }
+
+        const user = await User.findOne({
+            email: email.trim().toLowerCase()
+        });
+
+        if (!user || user.isEmailVerified) {
+            return res.status(200).json(genericReply);
+        }
+
+        // Same format and storage as registration: 6 digits, stored hashed, valid 15 minutes
+        const oneTimeCode = crypto
+            .randomInt(0, 1000000)
+            .toString()
+            .padStart(6, "0");
+
+        user.emailVerificationToken = crypto
+            .createHash("sha256")
+            .update(oneTimeCode)
+            .digest("hex");
+        user.emailVerificationExpires = Date.now() + 15 * 60 * 1000;
+        await user.save();
+
+        try {
+            await sendVerificationMail(user.email, oneTimeCode);
+        } catch (error) {
+            console.error("Resend verification email failed:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: "Unable to send the verification code. Please try again."
+            });
+        }
+
+        return res.status(200).json(genericReply);
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 exports.login = async (req, res, next) => {
     try {
